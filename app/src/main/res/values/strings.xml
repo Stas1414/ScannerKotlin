@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">ScannerKotlin</string>
+    <string name="rectangleText">Отсканированные товары</string>
+</resources>
