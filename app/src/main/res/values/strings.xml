@@ -1,4 +1,20 @@
 <resources>
     <string name="app_name">ScannerKotlin</string>
-    <string name="rectangleText">Отсканированные товары</string>
+    <string name="ScanText">Отсканированные товары</string>
+    <string name="mainText">Главное меню</string>
+    <string name="scanButton">Инвентаризация</string>
+    <string name="productsButton">Приход</string>
+    <string name="documentBtn">Перемещение</string>
+    <string name="productsText">Товары</string>
+    <string name="dataText">Data</string>
+    <string name="symbologyText">symbology</string>
+    <string name="productName">Название продукта</string>
+    <string name="productId">ID</string>
+    <string name="productDescription">Описание</string>
+    <string name="productPrice">Цена товара</string>
+    <string name="documentElements">Необработанные накладные</string>
+    <string name="titleDocument">title</string>
+    <string name="tvName">Name of Product</string>
+    <string name="tvMeasure">products measure</string>
+    <string name="tvQuantity">products quantity</string>
 </resources>

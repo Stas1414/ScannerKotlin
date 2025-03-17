@@ -5,7 +5,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".activities.MainActivity">
+    tools:context=".activities.ScanActivity">
 
     <View
         android:id="@+id/rectangle"
@@ -13,15 +13,14 @@
         android:layout_height="100dp"
         android:background="@color/black"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
-        android:id="@+id/textView"
+        android:id="@+id/rectangleText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/mainText"
+        android:text="@string/ScanText"
         android:textColor="@color/white"
         android:textSize="20sp"
         app:layout_constraintStart_toStartOf="parent"
@@ -31,37 +30,13 @@
         android:gravity="center" />
 
 
-    <Button
-        android:id="@+id/scanButton"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycleViewScan"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="100dp"
-        android:layout_marginTop="80dp"
-        android:text="@string/scanButton"
-        android:textSize="20sp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/rectangle" />
-
-    <Button
-        android:id="@+id/productsButton"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="112dp"
-        android:layout_marginTop="88dp"
-        android:text="@string/documentBtn"
-        android:textSize="20sp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/scanButton" />
-
-    <Button
-        android:id="@+id/documentButton"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="144dp"
-        android:layout_marginTop="88dp"
-        android:text="@string/productsButton"
-        android:textSize="20sp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/productsButton" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
