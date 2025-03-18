@@ -6,72 +6,167 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
-import com.example.scannerkotlin.adapter.BarcodeAdapter
+import com.example.scannerkotlin.adapter.ProductScanAdapter
 import com.example.scannerkotlin.api.ApiBitrix
-import com.example.scannerkotlin.model.Barcode
-import com.example.scannerkotlin.request.ProductOfferRequest
+import com.example.scannerkotlin.mappers.ProductMapper
+import com.example.scannerkotlin.mappers.ProductMeasureMapper
+import com.example.scannerkotlin.model.Product
+import com.example.scannerkotlin.request.MeasureIdRequest
+import com.example.scannerkotlin.request.ProductIdRequest
+import com.example.scannerkotlin.response.MeasureResponse
+import com.example.scannerkotlin.response.ProductBarcodeResponse
+import com.example.scannerkotlin.response.ProductResponse
 import com.example.scannerkotlin.service.ScanService
+import com.google.gson.internal.LinkedTreeMap
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 class ScanActivity : AppCompatActivity() {
 
-    private val products: MutableList<Barcode> = mutableListOf()
-    private lateinit var adapter: BarcodeAdapter
+    private val products: MutableList<Product> = mutableListOf()
+    private lateinit var adapter: ProductScanAdapter
     private var scanDataReceiver: BroadcastReceiver? = null
+    private val baseUrl = "https://bitrix.izocom.by/rest/1/c953o6imkob2gpwd/"
+    private val retrofit: Retrofit = Retrofit.Builder()
+        .baseUrl(baseUrl)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+    private val apiBitrix: ApiBitrix = retrofit.create(ApiBitrix::class.java)
 
     @SuppressLint("MissingInflatedId", "UnspecifiedRegisterReceiverFlag")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.scan_activity)
 
+
         startService(Intent(this, ScanService::class.java))
+
 
         val recyclerView: RecyclerView = findViewById(R.id.recycleViewScan)
         recyclerView.layoutManager = LinearLayoutManager(this)
-
-        adapter = BarcodeAdapter(products)
+        adapter = ProductScanAdapter(products)
         recyclerView.adapter = adapter
 
-        val baseUrl = "https://bitrix.izocom.by/rest/1/zkfdpw7kuo0xs9t6/"
-
-        val retrofit: Retrofit = Retrofit.Builder()
-            .baseUrl(baseUrl)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-
-        val apiBitrix = retrofit.create(ApiBitrix::class.java)
-
-        var productOfferRequest = ProductOfferRequest()
-//        productOfferRequest.filter[]
 
         scanDataReceiver = object : BroadcastReceiver() {
-            @SuppressLint("NotifyDataSetChanged")
             override fun onReceive(context: Context?, intent: Intent?) {
                 val action = intent?.action
-                if (action != null && action == "Scan_data_received") {
-                    val product = Barcode(
-                        intent.getStringExtra("scanData").toString(),
-                        intent.getStringExtra("symbology").toString()
-                    )
+                if (action == "Scan_data_received") {
+                    val barcodeData = intent.getStringExtra("scanData").toString()
+                    Log.d("ScanActivity", "Scanned barcode: $barcodeData")
 
-                    if (product.checkInList(products)) showAlertInfo() else {
 
-                        products.add(0, product)
-                        adapter.notifyDataSetChanged()
-                    }
+                    getProductIdByBarcode(barcodeData)
                 }
             }
         }
 
-        val intentFilter = IntentFilter("Scan_data_received")
-        registerReceiver(scanDataReceiver, intentFilter)
+
+        registerReceiver(scanDataReceiver, IntentFilter("Scan_data_received"))
     }
+
+    private fun getProductIdByBarcode(barcodeData: String) {
+        val call = apiBitrix.getProductIdByBarcode(barcodeData)
+        call.enqueue(object : Callback<ProductBarcodeResponse> {
+            override fun onResponse(call: Call<ProductBarcodeResponse>, response: Response<ProductBarcodeResponse>) {
+                if (response.isSuccessful) {
+                    val productId = response.body()?.result?.trim()
+
+                    if (!productId.isNullOrEmpty()) {
+                        Log.d("ScanActivity", "Product ID received: $productId")
+                        getProductById(productId)
+                    } else {
+                        Log.e("ScanActivity", "Product ID is null or empty")
+                    }
+                } else {
+                    Log.e("ScanActivity", "Failed to get product ID: ${response.errorBody()?.string()}")
+                }
+            }
+
+            override fun onFailure(call: Call<ProductBarcodeResponse>, t: Throwable) {
+                Log.e("ScanActivity", "Error getting product ID", t)
+            }
+        })
+    }
+
+
+
+
+    private fun getProductById(productId: String) {
+        val productRequest = ProductIdRequest(id = productId)
+        val call = apiBitrix.getProductById(productRequest)
+        call.enqueue(object : Callback<ProductResponse> {
+            override fun onResponse(call: Call<ProductResponse>, response: Response<ProductResponse>) {
+                if (response.isSuccessful) {
+                    val productDetails = response.body()?.result?.get("product") as? LinkedTreeMap<*, *>
+                    if (productDetails != null) {
+                        val productMapper = ProductMapper()
+                        val measureMapper = ProductMeasureMapper()
+                        val product = productMapper.mapToProduct(productDetails)
+
+                        addProductToList(measureMapper.setMeasureNameProduct(product))
+                        Log.d("Product", "$product")
+                    } else {
+                        Log.e("ScanActivity", "Product details are null")
+                    }
+                } else {
+                    Log.e("ScanActivity", "Failed to get product details: ${response.errorBody()}")
+                }
+            }
+
+            override fun onFailure(call: Call<ProductResponse>, t: Throwable) {
+                Log.e("ScanActivity", "Error getting product details", t)
+            }
+        })
+    }
+
+//    // Запрос данных о мере продукта
+//    private fun getMeasureForProduct(product: Product) {
+//        val measureRequest = MeasureIdRequest(id = product.measureId.toString())
+//        val call = apiBitrix.getMeasureById(measureRequest)
+//        call.enqueue(object : Callback<MeasureResponse> {
+//            override fun onResponse(call: Call<MeasureResponse>, response: Response<MeasureResponse>) {
+//                if (response.isSuccessful) {
+//                    val measureDetails = response.body()?.result?.get("measure") as? LinkedTreeMap<*, *>
+//                    if (measureDetails != null) {
+//                        product.measureSymbol = measureDetails["symbolIntl"].toString()
+//                        val measureMapper = ProductMeasureMapper()
+//                        val finalProduct = measureMapper.setMeasureNameProduct(product)
+//                        addProductToList(finalProduct)
+//                    } else {
+//                        Log.e("ScanActivity", "Measure details are null")
+//                    }
+//                } else {
+//                    Log.e("ScanActivity", "Failed to get measure details: ${response.errorBody()}")
+//                }
+//            }
+//
+//            override fun onFailure(call: Call<MeasureResponse>, t: Throwable) {
+//                Log.e("ScanActivity", "Error getting measure details", t)
+//            }
+//        })
+//    }
+
+    // Добавление продукта в список и обновление UI
+    @SuppressLint("NotifyDataSetChanged")
+    private fun addProductToList(product: Product) {
+        if (!product.checkInList(products)) {
+            products.add(0, product)
+            adapter.notifyDataSetChanged()
+        } else {
+            showAlertInfo()
+        }
+    }
+
 
     private fun showAlertInfo() {
         AlertDialog.Builder(this).apply {
@@ -86,6 +181,7 @@ class ScanActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+
         if (scanDataReceiver != null) {
             unregisterReceiver(scanDataReceiver)
         }

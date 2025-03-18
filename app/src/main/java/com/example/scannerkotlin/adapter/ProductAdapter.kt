@@ -1,28 +1,32 @@
 package com.example.scannerkotlin.adapter
 
 import android.annotation.SuppressLint
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.Spinner
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
 import com.example.scannerkotlin.model.Product
 
-class ProductAdapter(private val products: List<Product>) :
-    RecyclerView.Adapter<ProductAdapter.ProductViewHolder>() {
+class ProductAdapter(
+    private val productList: MutableList<Product>,
+    private val onDelete: (Int) -> Unit
+) : RecyclerView.Adapter<ProductAdapter.ProductViewHolder>() {
 
-    class ProductViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        private val tvName: TextView = view.findViewById(R.id.tvName)
-        private val tvMeasure: TextView = view.findViewById(R.id.tvMeasure)
-        private val tvQuantity: TextView = view.findViewById(R.id.tvQuantity)
-
-        @SuppressLint("SetTextI18n")
-        fun bind(product: Product) {
-            tvName.text = product.name ?: "Нет названия"
-            tvMeasure.text = "Ед. изм.: ${product.measureSymbol ?: "Не указано"}"
-            tvQuantity.text = "Кол-во: ${product.quantity ?: 0}"
-        }
+    class ProductViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val tvProductName: TextView = itemView.findViewById(R.id.tvProductName)
+        val etQuantity: EditText = itemView.findViewById(R.id.etQuantity)
+        val spinnerMeasure: Spinner = itemView.findViewById(R.id.spinnerMeasure)
+        val tvBarcode: TextView = itemView.findViewById(R.id.tvBarcode)
+        val btnDelete: ImageButton = itemView.findViewById(R.id.btnDelete)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductViewHolder {
@@ -31,9 +35,59 @@ class ProductAdapter(private val products: List<Product>) :
         return ProductViewHolder(view)
     }
 
-    override fun onBindViewHolder(holder: ProductViewHolder, position: Int) {
-        holder.bind(products[position])
+    @SuppressLint("SetTextI18n")
+    override fun onBindViewHolder(holder: ProductViewHolder, @SuppressLint("RecyclerView") position: Int) {
+        val product = productList[position]
+
+
+        holder.tvProductName.text = product.name
+
+
+        holder.tvBarcode.text = "Штрихкод: ${product.barcode ?: "—"}"
+
+
+        holder.etQuantity.setText(product.quantity.toString())
+
+
+        val measures = listOf("Штука", "Килограмм", "Литр", "Метр", "Грамм")
+        val measureAdapter = ArrayAdapter(
+            holder.itemView.context,
+            android.R.layout.simple_spinner_dropdown_item,
+            measures
+        )
+        holder.spinnerMeasure.adapter = measureAdapter
+
+
+        val currentMeasureIndex = measures.indexOf(product.measureName)
+        if (currentMeasureIndex != -1) {
+            holder.spinnerMeasure.setSelection(currentMeasureIndex)
+        }
+
+
+        holder.etQuantity.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                productList[position].quantity = s.toString().toIntOrNull() ?: 0
+            }
+
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+
+        holder.spinnerMeasure.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
+                productList[position].measureName = measures[pos]
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+
+        holder.btnDelete.setOnClickListener {
+            onDelete(position)
+        }
     }
 
-    override fun getItemCount(): Int = products.size
+    override fun getItemCount() = productList.size
 }

@@ -12,11 +12,9 @@ import com.example.scannerkotlin.model.DocumentElement
 import com.example.scannerkotlin.model.Product
 import com.example.scannerkotlin.request.CatalogDocumentElementListRequest
 import com.example.scannerkotlin.request.CatalogDocumentListRequest
-import com.example.scannerkotlin.request.MeasureRequest
 import com.example.scannerkotlin.request.ProductRequest
 import com.example.scannerkotlin.response.CatalogDocumentElementListResponse
 import com.example.scannerkotlin.response.CatalogDocumentListResponse
-import com.example.scannerkotlin.response.MeasureResponse
 import com.example.scannerkotlin.response.ProductResponse
 import com.google.gson.internal.LinkedTreeMap
 import retrofit2.Call
@@ -33,13 +31,11 @@ class CatalogService {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
-
     private val apiBitrix: ApiBitrix? = retrofit.create(ApiBitrix::class.java)
 
     private val documentMapper = DocumentMapper()
     private val documentElementsMapper = DocumentElementMapper()
     private val productMapper = ProductMapper()
-
 
     fun performDocumentListRequest(
         onComplete: (List<Document>) -> Unit,
@@ -134,12 +130,7 @@ class CatalogService {
 
                 performFinalRequest(
                     idDocumentElements = idDocumentsElements,
-                    onComplete = { products, measures ->
-
-                        products.forEach { product ->
-                            product.measureSymbol = measures[product.measureId]
-                        }
-
+                    onComplete = { products, _ ->
                         callback(products)
                     }
                 )
@@ -154,7 +145,6 @@ class CatalogService {
 
     private fun performFinalRequest(
         idDocumentElements: List<Long>,
-
         onComplete: (products: MutableList<Product>, measures: MutableMap<Int, String>) -> Unit
     ) {
         val productRequest = ProductRequest(
@@ -163,7 +153,7 @@ class CatalogService {
                 "iblockId" to listOf(14, 15)
             )
         )
-            val callFinalRequest: Call<ProductResponse>? = apiBitrix?.getProducts(productRequest)
+        val callFinalRequest: Call<ProductResponse>? = apiBitrix?.getProducts(productRequest)
         callFinalRequest?.enqueue(object : Callback<ProductResponse> {
             override fun onResponse(
                 call: Call<ProductResponse>,
@@ -187,65 +177,12 @@ class CatalogService {
                     Log.e("performFinalRequest", "Error code: ${response.code()}")
                 }
 
-
-                val measureIds = resultProducts
-                    .mapNotNull { it.measureId }
-                    .toMutableList()
-
-                if (measureIds.isNotEmpty()) {
-                    getMeasure(measureIds) { measuresMap ->
-                        onComplete(resultProducts, measuresMap)
-                    }
-                } else {
-                    onComplete(resultProducts, mutableMapOf())
-                }
+                onComplete(resultProducts, mutableMapOf())
             }
 
             override fun onFailure(call: Call<ProductResponse>, t: Throwable) {
                 Log.e("performFinalRequest", "Network error: ${t.message}", t)
                 onComplete(mutableListOf(), mutableMapOf())
-            }
-        })
-    }
-
-    private fun getMeasure(
-        measuresId: MutableList<Int>,
-        callback: (MutableMap<Int, String>) -> Unit
-    ) {
-        val measureRequest = MeasureRequest(
-            filter = mapOf(
-                "id" to measuresId.distinct()
-            )
-        )
-
-        val measuresResult: MutableMap<Int, String> = mutableMapOf()
-        val callMeasures: Call<MeasureResponse>? = apiBitrix?.getMeasure(measureRequest)
-        callMeasures?.enqueue(object : Callback<MeasureResponse> {
-            override fun onResponse(
-                call: Call<MeasureResponse>,
-                response: Response<MeasureResponse>
-            ) {
-                if (response.isSuccessful) {
-                    val result: MeasureResponse? = response.body()
-                    if (result != null) {
-                        val measures: ArrayList<*>? = result.result["measures"] as? ArrayList<*>
-                        if (measures != null && measures.isNotEmpty()) {
-                            for (measureUnit: Any? in measures) {
-                                val measure: LinkedTreeMap<*, *>? = measureUnit as? LinkedTreeMap<*, *>
-                                if (measure != null) {
-                                    val id = (measure["id"] as Double).toInt()
-                                    measuresResult[id] = measure["symbolIntl"].toString()
-                                }
-                            }
-                        }
-                    }
-                }
-                callback(measuresResult)
-            }
-
-            override fun onFailure(call: Call<MeasureResponse>, t: Throwable) {
-                Log.e("getMeasure", "Error: ${t.message}", t)
-                callback(mutableMapOf())
             }
         })
     }

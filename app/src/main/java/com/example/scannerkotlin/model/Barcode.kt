@@ -8,9 +8,9 @@ data class Barcode(val data: String, val symbology: String) {
         return "$data + \n$symbology"
     }
 
-    fun checkInList(products: MutableList<Barcode>): Boolean {
-        for (product in products) {
-            if (product.data == data) {
+    fun checkInList(barcodes: MutableList<Barcode>): Boolean {
+        for (barcode in barcodes) {
+            if (barcode.data == data) {
                 return true
             }
         }

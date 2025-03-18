@@ -1,37 +1,47 @@
 package com.example.scannerkotlin.adapter
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
+import com.example.scannerkotlin.activities.ProductsActivity
 import com.example.scannerkotlin.listener.OnItemClickListener
 import com.example.scannerkotlin.model.Document
 
-class DocumentAdapter(
-    private var documentList: MutableList<Document>,
-    private val listener: OnItemClickListener
-) : RecyclerView.Adapter<DocumentAdapter.ProductViewHolder>() {
+class DocumentAdapter(private val documentList: MutableList<Document>) :
+    RecyclerView.Adapter<DocumentAdapter.DocumentViewHolder>() {
 
-    class ProductViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val titleView: TextView = itemView.findViewById(R.id.titleDocument)
+    class DocumentViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val tvDocumentNumber: TextView = itemView.findViewById(R.id.tvDocumentNumber)
+        val tvArrivalDate: TextView = itemView.findViewById(R.id.tvArrivalDate)
+        val btnOpen: Button = itemView.findViewById(R.id.btnOpen)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductViewHolder {
-        val itemView = LayoutInflater.from(parent.context)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DocumentViewHolder {
+        val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.document_item, parent, false)
-        return ProductViewHolder(itemView)
+        return DocumentViewHolder(view)
     }
 
-    override fun onBindViewHolder(holder: ProductViewHolder, position: Int) {
-        val currentItem = documentList[position]
-        holder.titleView.text = currentItem.title
+    @SuppressLint("SetTextI18n")
+    override fun onBindViewHolder(holder: DocumentViewHolder, position: Int) {
+        val document = documentList[position]
+        holder.tvDocumentNumber.text = document.title
+        holder.tvArrivalDate.text = "Дата прихода ${document.dateCreate}"
 
-
-        holder.itemView.setOnClickListener {
-            listener.onItemClick(currentItem.title, currentItem.id.toString())
+        holder.btnOpen.setOnClickListener {
+            val context = holder.itemView.context
+            val intent = Intent(context, ProductsActivity::class.java)
+            intent.putExtra("title", document.title)
+            intent.putExtra("idDocument", document.id.toString())
+            context.startActivity(intent)
         }
     }
 
@@ -44,3 +54,4 @@ class DocumentAdapter(
         notifyDataSetChanged()
     }
 }
+

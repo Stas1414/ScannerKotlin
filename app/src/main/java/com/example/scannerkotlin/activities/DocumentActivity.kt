@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
@@ -29,13 +28,13 @@ class DocumentActivity : AppCompatActivity(), OnItemClickListener {
         val recyclerView: RecyclerView = findViewById(R.id.documentRecycleView)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        val space = 30
+        val space = 10
         recyclerView.addItemDecoration(SpaceItemDecoration(space))
 
         service = CatalogService()
 
 
-        adapter = DocumentAdapter(mutableListOf(), this)
+        adapter = DocumentAdapter(mutableListOf())
         recyclerView.adapter = adapter
 
 
