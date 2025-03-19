@@ -48,8 +48,6 @@ class ScanActivity : AppCompatActivity() {
         setContentView(R.layout.scan_activity)
 
 
-        startService(Intent(this, ScanService::class.java))
-
 
         val recyclerView: RecyclerView = findViewById(R.id.recycleViewScan)
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -129,34 +127,6 @@ class ScanActivity : AppCompatActivity() {
         })
     }
 
-//    // Запрос данных о мере продукта
-//    private fun getMeasureForProduct(product: Product) {
-//        val measureRequest = MeasureIdRequest(id = product.measureId.toString())
-//        val call = apiBitrix.getMeasureById(measureRequest)
-//        call.enqueue(object : Callback<MeasureResponse> {
-//            override fun onResponse(call: Call<MeasureResponse>, response: Response<MeasureResponse>) {
-//                if (response.isSuccessful) {
-//                    val measureDetails = response.body()?.result?.get("measure") as? LinkedTreeMap<*, *>
-//                    if (measureDetails != null) {
-//                        product.measureSymbol = measureDetails["symbolIntl"].toString()
-//                        val measureMapper = ProductMeasureMapper()
-//                        val finalProduct = measureMapper.setMeasureNameProduct(product)
-//                        addProductToList(finalProduct)
-//                    } else {
-//                        Log.e("ScanActivity", "Measure details are null")
-//                    }
-//                } else {
-//                    Log.e("ScanActivity", "Failed to get measure details: ${response.errorBody()}")
-//                }
-//            }
-//
-//            override fun onFailure(call: Call<MeasureResponse>, t: Throwable) {
-//                Log.e("ScanActivity", "Error getting measure details", t)
-//            }
-//        })
-//    }
-
-    // Добавление продукта в список и обновление UI
     @SuppressLint("NotifyDataSetChanged")
     private fun addProductToList(product: Product) {
         if (!product.checkInList(products)) {

@@ -2,17 +2,14 @@ package com.example.scannerkotlin.adapter
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
-import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
-import com.example.scannerkotlin.activities.ProductsActivity
-import com.example.scannerkotlin.listener.OnItemClickListener
+import com.example.scannerkotlin.activities.ProductsDocumentActivity
 import com.example.scannerkotlin.model.Document
 
 class DocumentAdapter(private val documentList: MutableList<Document>) :
@@ -38,7 +35,7 @@ class DocumentAdapter(private val documentList: MutableList<Document>) :
 
         holder.btnOpen.setOnClickListener {
             val context = holder.itemView.context
-            val intent = Intent(context, ProductsActivity::class.java)
+            val intent = Intent(context, ProductsDocumentActivity::class.java)
             intent.putExtra("title", document.title)
             intent.putExtra("idDocument", document.id.toString())
             context.startActivity(intent)

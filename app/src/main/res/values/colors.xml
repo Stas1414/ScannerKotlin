@@ -9,4 +9,6 @@
     <color name="dark_green">#388E3C</color>
     <color name="dark_blue">#1976D2</color>
     <color name="dark_red">#5B0A00</color>
+    <color name="light_gray">#CEC5C5</color>
+    <color name="barcode">#E5E4E4</color>
 </resources>

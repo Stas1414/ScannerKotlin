@@ -28,7 +28,7 @@ class DocumentActivity : AppCompatActivity(), OnItemClickListener {
         val recyclerView: RecyclerView = findViewById(R.id.documentRecycleView)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        val space = 10
+        val space = 15
         recyclerView.addItemDecoration(SpaceItemDecoration(space))
 
         service = CatalogService()
@@ -56,7 +56,7 @@ class DocumentActivity : AppCompatActivity(), OnItemClickListener {
     }
 
     override fun onItemClick(title: String, idDocument: String) {
-        val intent = Intent(this, ProductsActivity::class.java)
+        val intent = Intent(this, ProductsDocumentActivity::class.java)
         intent.putExtra("title", title)
         intent.putExtra("idDocument", idDocument)
         startActivity(intent)

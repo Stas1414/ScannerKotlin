@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import com.example.scannerkotlin.R
+import com.example.scannerkotlin.service.ScanService
 
 class MainActivity : AppCompatActivity() {
 
@@ -18,6 +19,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        startService(Intent(this, ScanService::class.java))
 
         scanButton = findViewById(R.id.scanButton)
         productsButton = findViewById(R.id.productsButton)
@@ -43,7 +46,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startProductsActivity() {
-        val intent = Intent(this, ProductsActivity::class.java)
+        val intent = Intent(this, ProductsDocumentActivity::class.java)
         startActivity(intent)
     }
 

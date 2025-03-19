@@ -27,6 +27,7 @@ class ScanService : android.app.Service() {
                     val localIntent = Intent("Scan_data_received")
                     localIntent.putExtra("scanData", scanData)
                     localIntent.putExtra("symbology", symbology)
+
                     sendBroadcast(localIntent)
                 }
             }

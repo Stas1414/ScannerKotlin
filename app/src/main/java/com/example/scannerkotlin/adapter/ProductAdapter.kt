@@ -21,11 +21,13 @@ class ProductAdapter(
     private val onDelete: (Int) -> Unit
 ) : RecyclerView.Adapter<ProductAdapter.ProductViewHolder>() {
 
+    private var focusedPosition: Int = -1
+
     class ProductViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvProductName: TextView = itemView.findViewById(R.id.tvProductName)
         val etQuantity: EditText = itemView.findViewById(R.id.etQuantity)
         val spinnerMeasure: Spinner = itemView.findViewById(R.id.spinnerMeasure)
-        val tvBarcode: TextView = itemView.findViewById(R.id.tvBarcode)
+        val tvBarcode: EditText = itemView.findViewById(R.id.tvBarcode)
         val btnDelete: ImageButton = itemView.findViewById(R.id.btnDelete)
     }
 
@@ -41,12 +43,8 @@ class ProductAdapter(
 
 
         holder.tvProductName.text = product.name
-
-
-        holder.tvBarcode.text = "Штрихкод: ${product.barcode ?: "—"}"
-
-
         holder.etQuantity.setText(product.quantity.toString())
+        holder.tvBarcode.setText(product.barcode ?: "")
 
 
         val measures = listOf("Штука", "Килограмм", "Литр", "Метр", "Грамм")
@@ -87,7 +85,32 @@ class ProductAdapter(
         holder.btnDelete.setOnClickListener {
             onDelete(position)
         }
+
+        holder.tvBarcode.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                focusedPosition = position
+            }
+        }
+
+
+        holder.tvBarcode.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                productList[position].barcode = s.toString()
+            }
+
+            override fun afterTextChanged(s: Editable?) {}
+        })
     }
 
     override fun getItemCount() = productList.size
+
+
+    fun updateFocusedProductBarcode(newBarcode: String) {
+        if (focusedPosition != -1) {
+            productList[focusedPosition].barcode = newBarcode
+            notifyItemChanged(focusedPosition)
+        }
+    }
 }

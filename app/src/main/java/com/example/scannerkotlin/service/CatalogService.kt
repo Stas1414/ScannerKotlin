@@ -1,8 +1,10 @@
 package com.example.scannerkotlin.service
 
+import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AlertDialog
 import com.example.scannerkotlin.api.ApiBitrix
 import com.example.scannerkotlin.mappers.DocumentElementMapper
 import com.example.scannerkotlin.mappers.DocumentMapper
@@ -15,7 +17,9 @@ import com.example.scannerkotlin.request.CatalogDocumentListRequest
 import com.example.scannerkotlin.request.ProductRequest
 import com.example.scannerkotlin.response.CatalogDocumentElementListResponse
 import com.example.scannerkotlin.response.CatalogDocumentListResponse
+import com.example.scannerkotlin.response.ErrorResponse
 import com.example.scannerkotlin.response.ProductResponse
+import com.google.gson.Gson
 import com.google.gson.internal.LinkedTreeMap
 import retrofit2.Call
 import retrofit2.Callback
@@ -36,6 +40,28 @@ class CatalogService {
     private val documentMapper = DocumentMapper()
     private val documentElementsMapper = DocumentElementMapper()
     private val productMapper = ProductMapper()
+
+    fun conductDocument(idDocument: Int?, context: Context, callback: (Boolean) -> Unit) {
+        val callDocument = apiBitrix?.conductDocument(idDocument)
+        callDocument?.enqueue(object : Callback<Boolean> {
+            override fun onResponse(call: Call<Boolean>, response: Response<Boolean>) {
+                if (response.isSuccessful) {
+                    callback(true)
+                } else {
+                    val errorDescription: ErrorResponse? = response.errorBody()?.string()?.let {
+                        Gson().fromJson(it, ErrorResponse::class.java)
+                    }
+                    showAlertInfo(errorDescription?.errorDescription ?: "Unknown error", context)
+                    callback(false)
+                }
+            }
+
+            override fun onFailure(call: Call<Boolean>, t: Throwable) {
+                showAlertInfo(t.message ?: "Unknown error", context)
+                callback(false)
+            }
+        })
+    }
 
     fun performDocumentListRequest(
         onComplete: (List<Document>) -> Unit,
@@ -185,5 +211,16 @@ class CatalogService {
                 onComplete(mutableListOf(), mutableMapOf())
             }
         })
+    }
+
+    private fun showAlertInfo(message: String, context: Context) {
+            AlertDialog.Builder(context).apply {
+                setTitle("Предупреждение")
+                setMessage(message)
+                setCancelable(false)
+                setPositiveButton("Закрыть") { dialog, _ ->
+                    dialog.cancel()
+                }
+            }.create().show()
     }
 }

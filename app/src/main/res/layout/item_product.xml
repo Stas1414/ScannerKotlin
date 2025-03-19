@@ -1,62 +1,90 @@
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:padding="16dp"
+    android:orientation="vertical"
+    android:padding="12dp"
     android:background="@drawable/item_border"
-    android:layout_marginBottom="8dp"
-    android:gravity="center_vertical">
+    android:layout_marginBottom="8dp">
 
-    <TextView
-        android:id="@+id/tvProductName"
-        android:layout_width="0dp"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="0.4"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:text="Товар1"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:paddingEnd="8dp"/>
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
-    <EditText
-        android:id="@+id/etQuantity"
-        android:layout_width="0dp"
+        <TextView
+            android:id="@+id/tvProductName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Товар1"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <ImageButton
+            android:id="@+id/btnDelete"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            app:srcCompat="@drawable/ic_delete_red"
+            app:tint="@color/holo_red_dark"
+            tools:ignore="ContentDescription" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="0.2"
-        android:inputType="number"
-        android:hint="Кол-во"
-        android:textSize="14sp"
-        android:paddingEnd="8dp"/>
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
 
-    <Spinner
-        android:id="@+id/spinnerMeasure"
-        android:layout_width="0dp"
+        <EditText
+            android:id="@+id/etQuantity"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:autofillHints=""
+            android:inputType="number"
+            android:hint="@string/quantity"
+            android:textSize="16sp"
+            android:gravity="center"
+            android:background="@drawable/rounded_background"
+            android:padding="10dp"
+            android:layout_marginEnd="8dp"/>
+
+        <Spinner
+            android:id="@+id/spinnerMeasure"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/rounded_background"
+            android:padding="10dp"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="0.2"
-        android:paddingEnd="8dp"/>
+        android:orientation="horizontal"
+        android:background="@color/light_gray"
+        android:padding="12dp"
+        android:layout_marginTop="8dp">
 
-    <TextView
-        android:id="@+id/tvBarcode"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="0.1"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:paddingEnd="8dp"
-        android:text="Штрихкод"
-        android:textSize="14sp" />
 
-    <ImageButton
-        android:id="@+id/btnDelete"
-        android:layout_width="0dp"
-        android:layout_height="40dp"
-        android:layout_weight="0.1"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:padding="8dp"
-        app:srcCompat="@drawable/ic_delete_red"
-        app:tint="@color/holo_red_dark" />
-
+        <EditText
+            android:id="@+id/tvBarcode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/barcode"
+            android:textSize="14sp"
+            android:textColor="@color/black"
+            android:inputType="text"
+            android:background="@null"
+            android:padding="0dp"
+            tools:ignore="Autofill,TextFields" />
+    </LinearLayout>
 </LinearLayout>
