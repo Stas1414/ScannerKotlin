@@ -3,6 +3,8 @@ package com.example.scannerkotlin.service
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import android.view.View
+import android.widget.ProgressBar
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import com.example.scannerkotlin.api.ApiBitrix
@@ -64,16 +66,33 @@ class CatalogService {
             }
         })
     }
-    fun saveProductOffers(productOffersList: MutableList<ProductOffer>) {
+    fun saveProductOffers(
+        productOffersList: MutableList<ProductOffer>,
+        onLoading: (Boolean) -> Unit
+    ) {
+        onLoading(true)
+
+        var activeRequests = productOffersList.size
+
         for (productOffer in productOffersList) {
-            addVariationOfProduct(productOffer)
+            addVariationOfProduct(productOffer) {
+                activeRequests--
+                if (activeRequests == 0) {
+
+                    onLoading(false)
+                }
+            }
         }
     }
-    private fun addVariationOfProduct(productOffer: ProductOffer) {
+
+    private fun addVariationOfProduct(productOffer: ProductOffer, onComplete: () -> Unit) {
         val productOfferRequest = ProductOfferRequest(
             fields = mapOf(
                 "iblockId" to 15,
-                "name" to productOffer.name.toString()
+                "name" to productOffer.name.toString(),
+                "parentId" to productOffer.parentId.toString(),
+                "dateCreate" to productOffer.dateCreate.toString(),
+                "purchasingPrice" to productOffer.purchasingPrice.toString()
             )
         )
 
@@ -86,32 +105,40 @@ class CatalogService {
                 } else {
                     Log.e("API", "Ошибка: ${response.errorBody()?.string()}")
                 }
+                onComplete()
             }
 
             override fun onFailure(call: Call<Boolean>, t: Throwable) {
                 Log.e("API", "Ошибка сети: ${t.message}")
+                onComplete()
             }
         })
-
     }
+
 
     fun performDocumentListRequest(
         onComplete: (List<Document>) -> Unit,
-        onError: (String) -> Unit
-    ): MutableList<Document> {
+        onError: (String) -> Unit,
+        onLoading: (Boolean) -> Unit
+    ) {
         val documentsList = mutableListOf<Document>()
         val requestWithParams = CatalogDocumentListRequest(
             filter = mutableMapOf("status" to "N")
         )
 
-        val callDocumentList: Call<CatalogDocumentListResponse>? =
-            apiBitrix?.getDocumentList(requestWithParams)
+
+        onLoading(true)
+
+        val callDocumentList: Call<CatalogDocumentListResponse>? = apiBitrix?.getDocumentList(requestWithParams)
         callDocumentList?.enqueue(object : Callback<CatalogDocumentListResponse> {
             @RequiresApi(Build.VERSION_CODES.O)
             override fun onResponse(
                 call: Call<CatalogDocumentListResponse>,
                 response: Response<CatalogDocumentListResponse>
             ) {
+
+                onLoading(false)
+
                 if (response.isSuccessful) {
                     val result = response.body() ?: run {
                         onError("Empty response body")
@@ -146,13 +173,16 @@ class CatalogService {
             }
 
             override fun onFailure(call: Call<CatalogDocumentListResponse>, t: Throwable) {
+
+                onLoading(false)
+
                 val errorMessage = "Network failure: ${t.localizedMessage}"
                 Log.e("NetworkError", errorMessage, t)
                 onError(errorMessage)
             }
         })
-        return documentsList
     }
+
 
     fun performDocumentElementsRequest(
         idDocument: Int,

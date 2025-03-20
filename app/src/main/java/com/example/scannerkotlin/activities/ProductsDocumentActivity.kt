@@ -9,9 +9,11 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.ListView
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
@@ -39,6 +41,8 @@ class ProductsDocumentActivity : AppCompatActivity() {
 
     private var scanDataReceiver: BroadcastReceiver? = null
 
+    private lateinit var progressBar: ProgressBar
+
     @SuppressLint("UnspecifiedRegisterReceiverFlag", "NewApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +52,7 @@ class ProductsDocumentActivity : AppCompatActivity() {
 
         btnSave = findViewById(R.id.btnSave)
         btnAddProduct = findViewById(R.id.btnAddProduct)
+        progressBar = findViewById(R.id.progressBar)
 
 
         scanDataReceiver = object : BroadcastReceiver() {
@@ -84,16 +89,13 @@ class ProductsDocumentActivity : AppCompatActivity() {
         }
 
         btnAddProduct?.setOnClickListener {
-//            productList.add(Product(
-//
-//            ))
             addProduct()
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createProductOffer(product: Product): ProductOffer{
-        val productOffer: ProductOffer = ProductOffer()
+        val productOffer = ProductOffer()
         productOffer.name = product.name
         productOffer.iblockId = 15
         productOffer.parentId = product.id
@@ -118,7 +120,8 @@ class ProductsDocumentActivity : AppCompatActivity() {
                         Toast.makeText(this, "Вы выбрали: ${selectedProduct.name}", Toast.LENGTH_SHORT).show()
                         productList.add(0, selectedProduct)
                         productOffersList.add(createProductOffer(selectedProduct))
-                        adapter.notifyDataSetChanged()
+                        adapter.notifyItemInserted(0)
+                        updateSaveButtonState()
                     } else {
                         Toast.makeText(this, "Выбор отменён", Toast.LENGTH_SHORT).show()
                     }
@@ -170,6 +173,7 @@ class ProductsDocumentActivity : AppCompatActivity() {
         adapter = ProductAdapter(productList) { position ->
             productList.removeAt(position)
             adapter.notifyItemRemoved(position)
+            updateSaveButtonState()
         }
 
         recyclerView.adapter = adapter
@@ -193,6 +197,7 @@ class ProductsDocumentActivity : AppCompatActivity() {
 
     @SuppressLint("NotifyDataSetChanged")
     private fun loadProducts() {
+        progressBar.visibility = View.VISIBLE
         val idDocument = intent.getStringExtra("idDocument")?.toIntOrNull() ?: return
 
         try {
@@ -208,10 +213,14 @@ class ProductsDocumentActivity : AppCompatActivity() {
                         productList.addAll(productMeasureMapper.products)
                         adapter.notifyDataSetChanged()
                     }
+
+                    progressBar.visibility = View.GONE
                 }
             }
+
         } catch (e: Exception) {
             Log.e("ProductsActivity", "Error loading products", e)
+            progressBar.visibility = View.GONE
         }
     }
 
@@ -229,7 +238,7 @@ class ProductsDocumentActivity : AppCompatActivity() {
             if (isAllFieldsFilled) {
                 ContextCompat.getColor(this, R.color.blue)
             } else {
-                return
+                ContextCompat.getColor(this, R.color.gray)
             }
 
         )
