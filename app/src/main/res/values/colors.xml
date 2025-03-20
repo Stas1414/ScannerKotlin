@@ -11,4 +11,5 @@
     <color name="dark_red">#5B0A00</color>
     <color name="light_gray">#CEC5C5</color>
     <color name="barcode">#E5E4E4</color>
+    <color name="gray">#BEBABA</color>
 </resources>

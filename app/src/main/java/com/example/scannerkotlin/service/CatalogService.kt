@@ -70,7 +70,7 @@ class CatalogService {
         }
     }
     private fun addVariationOfProduct(productOffer: ProductOffer) {
-        val productOfferRequest: ProductOfferRequest = ProductOfferRequest(
+        val productOfferRequest = ProductOfferRequest(
             fields = mapOf(
                 "iblockId" to 15,
                 "name" to productOffer.name.toString()

@@ -14,6 +14,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
+import com.example.scannerkotlin.activities.ProductsDocumentActivity
 import com.example.scannerkotlin.model.Product
 
 class ProductAdapter(
@@ -37,9 +38,21 @@ class ProductAdapter(
         return ProductViewHolder(view)
     }
 
+    override fun onBindViewHolder(holder: ProductViewHolder, position: Int, payloads: List<Any>) {
+        if (payloads.isNotEmpty() && payloads[0] == "barcode_update") {
+            // Обновляем только штрихкод, не трогая количество
+            holder.tvBarcode.setText(productList[position].barcode)
+            return
+        }
+
+        onBindViewHolder(holder, position)
+    }
+
+
     @SuppressLint("SetTextI18n")
     override fun onBindViewHolder(holder: ProductViewHolder, @SuppressLint("RecyclerView") position: Int) {
         val product = productList[position]
+
 
         holder.tvProductName.text = product.name
 
@@ -69,14 +82,9 @@ class ProductAdapter(
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                // Сохраняем значение quantity, если поле не пустое
                 val input = s?.toString() ?: ""
-                if (input.isNotEmpty()) {
-                    productList[position].quantity = input.toIntOrNull() ?: 0
-                } else {
-                    // Если поле пустое, можно установить значение по умолчанию (например, 0)
-                    productList[position].quantity = 0
-                }
+                productList[position].quantity = input.toIntOrNull() ?: 0
+                (holder.itemView.context as? ProductsDocumentActivity)?.updateSaveButtonState()
             }
 
             override fun afterTextChanged(s: Editable?) {}
@@ -85,6 +93,7 @@ class ProductAdapter(
         holder.spinnerMeasure.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
                 productList[position].measureName = measures[pos]
+                (holder.itemView.context as? ProductsDocumentActivity)?.updateSaveButtonState()
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -105,6 +114,7 @@ class ProductAdapter(
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 productList[position].barcode = s.toString()
+                (holder.itemView.context as? ProductsDocumentActivity)?.updateSaveButtonState()
             }
 
             override fun afterTextChanged(s: Editable?) {}
@@ -117,7 +127,7 @@ class ProductAdapter(
     fun updateFocusedProductBarcode(newBarcode: String) {
         if (focusedPosition != -1) {
             productList[focusedPosition].barcode = newBarcode
-            notifyItemChanged(focusedPosition)
+            notifyItemChanged(focusedPosition, "barcode_update")
         }
     }
 }

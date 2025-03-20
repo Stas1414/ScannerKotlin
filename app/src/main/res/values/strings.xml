@@ -29,7 +29,7 @@
         <item>5</item>
     </string-array>
     <string name="btnAddProduct">Добавить товар</string>
-    <string name="btnSave">Провести учет</string>
+    <string name="btnSave">Сохранить</string>
     <string name="quantity">Количество</string>
     <string name="barcode">Штрихкод</string>
 

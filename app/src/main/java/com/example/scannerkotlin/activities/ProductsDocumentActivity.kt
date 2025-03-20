@@ -16,6 +16,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
@@ -212,6 +213,26 @@ class ProductsDocumentActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("ProductsActivity", "Error loading products", e)
         }
+    }
+
+    private fun areAllFieldsFilled(): Boolean {
+        return productList.all { product ->
+            (product.quantity ?: 0) > 0 &&
+                    !product.barcode.isNullOrEmpty()
+        }
+    }
+
+    fun updateSaveButtonState() {
+        val isAllFieldsFilled = areAllFieldsFilled()
+        btnSave?.isEnabled = isAllFieldsFilled
+        btnSave?.setBackgroundColor(
+            if (isAllFieldsFilled) {
+                ContextCompat.getColor(this, R.color.blue)
+            } else {
+                return
+            }
+
+        )
     }
 
     override fun onDestroy() {
