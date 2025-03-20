@@ -15,7 +15,7 @@
         android:layout_height="wrap_content"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:text="Документ прихода"/>
+        android:text="@string/documentType"/>
 
 
     <LinearLayout

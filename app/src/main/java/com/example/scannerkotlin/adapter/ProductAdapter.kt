@@ -41,11 +41,15 @@ class ProductAdapter(
     override fun onBindViewHolder(holder: ProductViewHolder, @SuppressLint("RecyclerView") position: Int) {
         val product = productList[position]
 
-
         holder.tvProductName.text = product.name
-        holder.etQuantity.setText(product.quantity.toString())
+
+
+        holder.etQuantity.setText("")
+
         holder.tvBarcode.setText(product.barcode ?: "")
 
+
+        holder.tvBarcode.showSoftInputOnFocus = false
 
         val measures = listOf("Штука", "Килограмм", "Литр", "Метр", "Грамм")
         val measureAdapter = ArrayAdapter(
@@ -54,7 +58,6 @@ class ProductAdapter(
             measures
         )
         holder.spinnerMeasure.adapter = measureAdapter
-
 
         val currentMeasureIndex = measures.indexOf(product.measureName)
         if (currentMeasureIndex != -1) {
@@ -66,12 +69,18 @@ class ProductAdapter(
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                productList[position].quantity = s.toString().toIntOrNull() ?: 0
+                // Сохраняем значение quantity, если поле не пустое
+                val input = s?.toString() ?: ""
+                if (input.isNotEmpty()) {
+                    productList[position].quantity = input.toIntOrNull() ?: 0
+                } else {
+                    // Если поле пустое, можно установить значение по умолчанию (например, 0)
+                    productList[position].quantity = 0
+                }
             }
 
             override fun afterTextChanged(s: Editable?) {}
         })
-
 
         holder.spinnerMeasure.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
@@ -80,7 +89,6 @@ class ProductAdapter(
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
-
 
         holder.btnDelete.setOnClickListener {
             onDelete(position)
@@ -91,7 +99,6 @@ class ProductAdapter(
                 focusedPosition = position
             }
         }
-
 
         holder.tvBarcode.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}

@@ -13,7 +13,6 @@
         android:layout_height="100dp"
         android:background="@color/black"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -24,44 +23,48 @@
         android:text="@string/mainText"
         android:textColor="@color/white"
         android:textSize="20sp"
+        android:gravity="center"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/rectangle"
-        app:layout_constraintBottom_toBottomOf="@id/rectangle"
-        android:gravity="center" />
-
+        app:layout_constraintBottom_toBottomOf="@id/rectangle" />
 
     <Button
         android:id="@+id/scanButton"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="100dp"
-        android:layout_marginTop="80dp"
+        android:layout_marginTop="72dp"
+        android:backgroundTint="@color/blue"
         android:text="@string/scanButton"
         android:textSize="20sp"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/rectangle" />
+        app:layout_constraintTop_toBottomOf="@id/rectangle" />
 
     <Button
         android:id="@+id/productsButton"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="112dp"
-        android:layout_marginTop="88dp"
+        android:layout_marginTop="120dp"
+        android:backgroundTint="@color/blue"
         android:text="@string/documentBtn"
         android:textSize="20sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.497"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/scanButton" />
+        app:layout_constraintTop_toBottomOf="@id/scanButton" />
 
     <Button
         android:id="@+id/documentButton"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="144dp"
-        android:layout_marginTop="88dp"
+        android:layout_marginTop="120dp"
+        android:backgroundTint="@color/blue"
         android:text="@string/productsButton"
         android:textSize="20sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/productsButton" />
+        app:layout_constraintTop_toBottomOf="@id/productsButton" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

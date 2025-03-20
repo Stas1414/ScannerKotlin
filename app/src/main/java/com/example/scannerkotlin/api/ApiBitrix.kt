@@ -27,10 +27,10 @@ interface ApiBitrix {
         @Body list: CatalogDocumentElementListRequest
     ): Call<CatalogDocumentElementListResponse>
 
-    @POST("catalog.product.offer.list")
-    fun getVariationsOfProduct(
+    @POST("catalog.product.offer.add")
+    fun addVariationsOfProduct(
         @Body request: ProductOfferRequest
-    ): Call<HashMap<String, Any>>
+    ): Call<Boolean>
 
     @POST("catalog.product.list")
     fun getProducts (

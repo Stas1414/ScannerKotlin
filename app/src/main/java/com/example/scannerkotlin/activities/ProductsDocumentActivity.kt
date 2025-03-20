@@ -1,14 +1,20 @@
 package com.example.scannerkotlin.activities
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.ListView
 import android.widget.TextView
+import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -16,7 +22,10 @@ import com.example.scannerkotlin.R
 import com.example.scannerkotlin.adapter.ProductAdapter
 import com.example.scannerkotlin.mappers.ProductMeasureMapper
 import com.example.scannerkotlin.model.Product
+import com.example.scannerkotlin.model.ProductOffer
+import com.example.scannerkotlin.request.ProductRequest
 import com.example.scannerkotlin.service.CatalogService
+import java.time.LocalDateTime
 
 class ProductsDocumentActivity : AppCompatActivity() {
 
@@ -25,13 +34,14 @@ class ProductsDocumentActivity : AppCompatActivity() {
     private lateinit var adapter: ProductAdapter
     private val productList = mutableListOf<Product>()
     private val service by lazy { CatalogService() }
+    private var productOffersList = mutableListOf<ProductOffer>()
 
     private var scanDataReceiver: BroadcastReceiver? = null
 
-    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    @SuppressLint("UnspecifiedRegisterReceiverFlag", "NewApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_products)
+        setContentView(R.layout.activity_document_products)
 
 
 
@@ -73,9 +83,83 @@ class ProductsDocumentActivity : AppCompatActivity() {
         }
 
         btnAddProduct?.setOnClickListener {
-
+//            productList.add(Product(
+//
+//            ))
+            addProduct()
         }
     }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun createProductOffer(product: Product): ProductOffer{
+        val productOffer: ProductOffer = ProductOffer()
+        productOffer.name = product.name
+        productOffer.iblockId = 15
+        productOffer.parentId = product.id
+        productOffer.dateCreate = LocalDateTime.now()
+        productOffer.purchasingPrice = 0.0
+        return productOffer
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    @SuppressLint("NotifyDataSetChanged")
+    private fun addProduct() {
+        val productRequest = ProductRequest(
+            filter = mapOf("iblockId" to 14)
+        )
+
+        service.performFinalRequest(productRequest, onComplete = { products ->
+            if (products.isEmpty()) {
+                showAlert("Нет доступных продуктов", emptyList()) {}
+            } else {
+                showAlert("Выберите продукт", products) { selectedProduct ->
+                    if (selectedProduct != null) {
+                        Toast.makeText(this, "Вы выбрали: ${selectedProduct.name}", Toast.LENGTH_SHORT).show()
+                        productList.add(0, selectedProduct)
+                        productOffersList.add(createProductOffer(selectedProduct))
+                        adapter.notifyDataSetChanged()
+                    } else {
+                        Toast.makeText(this, "Выбор отменён", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        })
+    }
+
+    private fun showAlert(
+        title: String,
+        products: List<Product>,
+        onProductSelected: (Product?) -> Unit
+    ) {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle(title)
+
+        val productNames = products.map { it.name }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, productNames)
+
+        val listView = ListView(this)
+        listView.adapter = adapter
+
+        builder.setView(listView)
+        builder.setNegativeButton("Закрыть") { dialog, _ ->
+            onProductSelected(null)
+            dialog.dismiss()
+        }
+
+        val dialog = builder.create()
+
+        listView.setOnItemClickListener { _, _, position, _ ->
+            val selectedProduct = products[position]
+            onProductSelected(selectedProduct)
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+
+
+
 
     private fun setupRecyclerView() {
         val recyclerView: RecyclerView = findViewById(R.id.rvProducts)

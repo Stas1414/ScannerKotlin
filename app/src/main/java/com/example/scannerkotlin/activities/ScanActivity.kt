@@ -17,12 +17,9 @@ import com.example.scannerkotlin.api.ApiBitrix
 import com.example.scannerkotlin.mappers.ProductMapper
 import com.example.scannerkotlin.mappers.ProductMeasureMapper
 import com.example.scannerkotlin.model.Product
-import com.example.scannerkotlin.request.MeasureIdRequest
 import com.example.scannerkotlin.request.ProductIdRequest
-import com.example.scannerkotlin.response.MeasureResponse
 import com.example.scannerkotlin.response.ProductBarcodeResponse
 import com.example.scannerkotlin.response.ProductResponse
-import com.example.scannerkotlin.service.ScanService
 import com.google.gson.internal.LinkedTreeMap
 import retrofit2.Call
 import retrofit2.Callback
@@ -83,6 +80,7 @@ class ScanActivity : AppCompatActivity() {
                         Log.d("ScanActivity", "Product ID received: $productId")
                         getProductById(productId)
                     } else {
+                        showAlertInfo("Товар не найден")
                         Log.e("ScanActivity", "Product ID is null or empty")
                     }
                 } else {
@@ -115,6 +113,7 @@ class ScanActivity : AppCompatActivity() {
                         Log.d("Product", "$product")
                     } else {
                         Log.e("ScanActivity", "Product details are null")
+
                     }
                 } else {
                     Log.e("ScanActivity", "Failed to get product details: ${response.errorBody()}")
@@ -133,15 +132,15 @@ class ScanActivity : AppCompatActivity() {
             products.add(0, product)
             adapter.notifyDataSetChanged()
         } else {
-            showAlertInfo()
+            showAlertInfo("Этот товар уже отсканирован")
         }
     }
 
 
-    private fun showAlertInfo() {
+    private fun showAlertInfo(text: String) {
         AlertDialog.Builder(this).apply {
             setTitle("Предупреждение")
-            setMessage("Этот товар уже отсканирован")
+            setMessage(text)
             setCancelable(false)
             setPositiveButton("Закрыть") { dialog, _ ->
                 dialog.cancel()

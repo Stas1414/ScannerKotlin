@@ -48,9 +48,8 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:autofillHints=""
             android:inputType="number"
-            android:hint="@string/quantity"
+            android:hint="Количество"
             android:textSize="16sp"
             android:gravity="center"
             android:background="@drawable/rounded_background"
@@ -74,12 +73,11 @@
         android:padding="12dp"
         android:layout_marginTop="8dp">
 
-
         <EditText
             android:id="@+id/tvBarcode"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/barcode"
+            android:hint="Штрихкод"
             android:textSize="14sp"
             android:textColor="@color/black"
             android:inputType="text"

@@ -12,8 +12,10 @@ import com.example.scannerkotlin.mappers.ProductMapper
 import com.example.scannerkotlin.model.Document
 import com.example.scannerkotlin.model.DocumentElement
 import com.example.scannerkotlin.model.Product
+import com.example.scannerkotlin.model.ProductOffer
 import com.example.scannerkotlin.request.CatalogDocumentElementListRequest
 import com.example.scannerkotlin.request.CatalogDocumentListRequest
+import com.example.scannerkotlin.request.ProductOfferRequest
 import com.example.scannerkotlin.request.ProductRequest
 import com.example.scannerkotlin.response.CatalogDocumentElementListResponse
 import com.example.scannerkotlin.response.CatalogDocumentListResponse
@@ -42,7 +44,7 @@ class CatalogService {
     private val productMapper = ProductMapper()
 
     fun conductDocument(idDocument: Int?, context: Context, callback: (Boolean) -> Unit) {
-        val callDocument = apiBitrix?.conductDocument(idDocument)
+        val callDocument = idDocument?.let { apiBitrix?.conductDocument(it) }
         callDocument?.enqueue(object : Callback<Boolean> {
             override fun onResponse(call: Call<Boolean>, response: Response<Boolean>) {
                 if (response.isSuccessful) {
@@ -61,6 +63,36 @@ class CatalogService {
                 callback(false)
             }
         })
+    }
+    fun saveProductOffers(productOffersList: MutableList<ProductOffer>) {
+        for (productOffer in productOffersList) {
+            addVariationOfProduct(productOffer)
+        }
+    }
+    private fun addVariationOfProduct(productOffer: ProductOffer) {
+        val productOfferRequest: ProductOfferRequest = ProductOfferRequest(
+            fields = mapOf(
+                "iblockId" to 15,
+                "name" to productOffer.name.toString()
+            )
+        )
+
+        val callOffer: Call<Boolean>? = apiBitrix?.addVariationsOfProduct(productOfferRequest)
+
+        callOffer?.enqueue(object : Callback<Boolean> {
+            override fun onResponse(call: Call<Boolean>, response: Response<Boolean>) {
+                if (response.isSuccessful) {
+                    Log.d("API", "Элемент успешно добавлен")
+                } else {
+                    Log.e("API", "Ошибка: ${response.errorBody()?.string()}")
+                }
+            }
+
+            override fun onFailure(call: Call<Boolean>, t: Throwable) {
+                Log.e("API", "Ошибка сети: ${t.message}")
+            }
+        })
+
     }
 
     fun performDocumentListRequest(
@@ -154,9 +186,15 @@ class CatalogService {
 
                 val idDocumentsElements = documentElements.mapNotNull { it.elementId }
 
+                val productRequest = ProductRequest(
+                    filter = mapOf(
+                        "id" to idDocumentsElements,
+                        "iblockId" to listOf(14, 15)
+                    )
+                )
                 performFinalRequest(
-                    idDocumentElements = idDocumentsElements,
-                    onComplete = { products, _ ->
+                    productRequest,
+                    onComplete = { products ->
                         callback(products)
                     }
                 )
@@ -169,16 +207,10 @@ class CatalogService {
         })
     }
 
-    private fun performFinalRequest(
-        idDocumentElements: List<Long>,
-        onComplete: (products: MutableList<Product>, measures: MutableMap<Int, String>) -> Unit
+     fun performFinalRequest(
+        productRequest: ProductRequest,
+        onComplete: (products: MutableList<Product>) -> Unit
     ) {
-        val productRequest = ProductRequest(
-            filter = mapOf(
-                "id" to idDocumentElements,
-                "iblockId" to listOf(14, 15)
-            )
-        )
         val callFinalRequest: Call<ProductResponse>? = apiBitrix?.getProducts(productRequest)
         callFinalRequest?.enqueue(object : Callback<ProductResponse> {
             override fun onResponse(
@@ -203,15 +235,16 @@ class CatalogService {
                     Log.e("performFinalRequest", "Error code: ${response.code()}")
                 }
 
-                onComplete(resultProducts, mutableMapOf())
+                onComplete(resultProducts)
             }
 
             override fun onFailure(call: Call<ProductResponse>, t: Throwable) {
                 Log.e("performFinalRequest", "Network error: ${t.message}", t)
-                onComplete(mutableListOf(), mutableMapOf())
+                onComplete(mutableListOf())
             }
         })
     }
+
 
     private fun showAlertInfo(message: String, context: Context) {
             AlertDialog.Builder(context).apply {
