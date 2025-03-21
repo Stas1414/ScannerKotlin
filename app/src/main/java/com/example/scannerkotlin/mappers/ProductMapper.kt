@@ -11,7 +11,6 @@ class ProductMapper {
             name = map["name"] as String,
             measureId = (map["measure"] as? Double)?.toInt(),
             measureSymbol = null,
-            measureName = null,
             quantity = (map["quantity"] as? Double)?.toInt(),
             barcode = null
         )

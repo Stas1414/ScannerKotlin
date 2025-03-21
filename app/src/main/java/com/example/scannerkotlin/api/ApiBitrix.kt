@@ -1,5 +1,6 @@
 package com.example.scannerkotlin.api
 
+import com.example.scannerkotlin.request.BarcodeRequest
 import com.example.scannerkotlin.request.CatalogDocumentElementListRequest
 import com.example.scannerkotlin.request.CatalogDocumentListRequest
 import com.example.scannerkotlin.request.ProductIdRequest
@@ -8,6 +9,7 @@ import com.example.scannerkotlin.request.ProductRequest
 import com.example.scannerkotlin.response.CatalogDocumentElementListResponse
 import com.example.scannerkotlin.response.CatalogDocumentListResponse
 import com.example.scannerkotlin.response.ProductBarcodeResponse
+import com.example.scannerkotlin.response.ProductOfferResponse
 import com.example.scannerkotlin.response.ProductResponse
 import retrofit2.Call
 import retrofit2.http.Body
@@ -30,7 +32,7 @@ interface ApiBitrix {
     @POST("catalog.product.offer.add")
     fun addVariationsOfProduct(
         @Body request: ProductOfferRequest
-    ): Call<Boolean>
+    ): Call<ProductOfferResponse>
 
     @POST("catalog.product.list")
     fun getProducts (
@@ -42,6 +44,11 @@ interface ApiBitrix {
     fun getProductIdByBarcode(
         @Query("barcode") barcode: String
     ): Call<ProductBarcodeResponse>
+
+    @POST("barcode.setbyproductid.json")
+    fun setBarcodeByProductId(
+        @Body request: BarcodeRequest
+    ): Call<HashMap<String, Any?>>
 
     @POST("catalog.product.get")
     fun getProductById(

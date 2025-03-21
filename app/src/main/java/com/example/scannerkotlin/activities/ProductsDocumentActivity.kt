@@ -38,6 +38,7 @@ class ProductsDocumentActivity : AppCompatActivity() {
     private val productList = mutableListOf<Product>()
     private val service by lazy { CatalogService() }
     private var productOffersList = mutableListOf<ProductOffer>()
+    private var barcodesMap = mutableMapOf<Int, String>()
 
     private var scanDataReceiver: BroadcastReceiver? = null
 
@@ -64,7 +65,12 @@ class ProductsDocumentActivity : AppCompatActivity() {
 
                     runOnUiThread {
 
-                        adapter.updateFocusedProductBarcode(barcodeData)
+                        val productId = adapter.updateFocusedProductBarcode(barcodeData)
+                        if (productId != null) {
+                            Log.d("Adapter", "Обновлен продукт с ID: $productId")
+                        } else {
+                            Log.e("Adapter", "Не удалось обновить штрихкод, нет фокусированного продукта")
+                        }
                     }
                 }
             }
@@ -79,11 +85,13 @@ class ProductsDocumentActivity : AppCompatActivity() {
         val idDocument: Int? = intent.getStringExtra("idDocument")?.toInt()
 
         btnSave?.setOnClickListener {
-            service.conductDocument(idDocument = idDocument, context = this) { success ->
-                if (success) {
-                    val intent = Intent(this,
-                        DocumentActivity::class.java)
-                    startActivity(intent)
+            service.saveProductOffers(productOffersList) { isLoading ->
+                if (isLoading) {
+                    progressBar.visibility = View.VISIBLE
+                    Log.d("SaveProductOffers", "Сохранение началось...")
+                } else {
+                    progressBar.visibility = View.GONE
+                    Log.d("SaveProductOffers", "Сохранение завершено!")
                 }
             }
         }
@@ -95,12 +103,7 @@ class ProductsDocumentActivity : AppCompatActivity() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createProductOffer(product: Product): ProductOffer{
-        val productOffer = ProductOffer()
-        productOffer.name = product.name
-        productOffer.iblockId = 15
-        productOffer.parentId = product.id
-        productOffer.dateCreate = LocalDateTime.now()
-        productOffer.purchasingPrice = 0.0
+        val productOffer = ProductOffer(product)
         return productOffer
     }
 
@@ -206,11 +209,8 @@ class ProductsDocumentActivity : AppCompatActivity() {
 
                 runOnUiThread {
                     if (!isFinishing) {
-                        val productMeasureMapper = ProductMeasureMapper(products)
-                        productMeasureMapper.setMeasureNameList()
-
                         productList.clear()
-                        productList.addAll(productMeasureMapper.products)
+                        productList.addAll(products)
                         adapter.notifyDataSetChanged()
                     }
 

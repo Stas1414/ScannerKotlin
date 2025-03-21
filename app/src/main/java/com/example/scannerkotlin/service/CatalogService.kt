@@ -11,10 +11,12 @@ import com.example.scannerkotlin.api.ApiBitrix
 import com.example.scannerkotlin.mappers.DocumentElementMapper
 import com.example.scannerkotlin.mappers.DocumentMapper
 import com.example.scannerkotlin.mappers.ProductMapper
+import com.example.scannerkotlin.mappers.ProductMeasureMapper
 import com.example.scannerkotlin.model.Document
 import com.example.scannerkotlin.model.DocumentElement
 import com.example.scannerkotlin.model.Product
 import com.example.scannerkotlin.model.ProductOffer
+import com.example.scannerkotlin.request.BarcodeRequest
 import com.example.scannerkotlin.request.CatalogDocumentElementListRequest
 import com.example.scannerkotlin.request.CatalogDocumentListRequest
 import com.example.scannerkotlin.request.ProductOfferRequest
@@ -22,6 +24,7 @@ import com.example.scannerkotlin.request.ProductRequest
 import com.example.scannerkotlin.response.CatalogDocumentElementListResponse
 import com.example.scannerkotlin.response.CatalogDocumentListResponse
 import com.example.scannerkotlin.response.ErrorResponse
+import com.example.scannerkotlin.response.ProductOfferResponse
 import com.example.scannerkotlin.response.ProductResponse
 import com.google.gson.Gson
 import com.google.gson.internal.LinkedTreeMap
@@ -33,13 +36,20 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 class CatalogService {
     private val baseUrl = "https://bitrix.izocom.by/rest/1/o2deu7wx7zfl3ib4/"
+    private val barcodeBaseUrl = "https://bitrix.izocom.by/rest/1/sh1lchx64vrzcor6/"
 
     private var retrofit: Retrofit = Retrofit.Builder()
         .baseUrl(baseUrl)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
+    private var barcodeRetrofit: Retrofit = Retrofit.Builder()
+        .baseUrl(barcodeBaseUrl)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
     private val apiBitrix: ApiBitrix? = retrofit.create(ApiBitrix::class.java)
+    private val apiBarcode: ApiBitrix? = barcodeRetrofit.create(ApiBitrix::class.java)
 
     private val documentMapper = DocumentMapper()
     private val documentElementsMapper = DocumentElementMapper()
@@ -66,6 +76,7 @@ class CatalogService {
             }
         })
     }
+    @RequiresApi(Build.VERSION_CODES.O)
     fun saveProductOffers(
         productOffersList: MutableList<ProductOffer>,
         onLoading: (Boolean) -> Unit
@@ -75,42 +86,76 @@ class CatalogService {
         var activeRequests = productOffersList.size
 
         for (productOffer in productOffersList) {
-            addVariationOfProduct(productOffer) {
+            addVariationOfProduct(productOffer) { productId ->
+                if (productId != null) {
+                    Log.d("saveBarcodeForProduct", "${productOffer.barcode}")
+                    setBarcodeForProduct(productId, productOffer.barcode.toString())
+
+                }
+                Log.d("saveProducts", "${productOffer.name} + saved")
+
                 activeRequests--
                 if (activeRequests == 0) {
-
                     onLoading(false)
                 }
             }
         }
     }
 
-    private fun addVariationOfProduct(productOffer: ProductOffer, onComplete: () -> Unit) {
+    private fun setBarcodeForProduct(productId: Int, barcode: String) {
+        val barcodeRequest = BarcodeRequest(productId, barcode)
+        val callBarcode: Call<HashMap<String, Any?>>? = apiBarcode?.setBarcodeByProductId(barcodeRequest)
+        callBarcode?.enqueue(object : Callback<HashMap<String, Any?>> {
+            override fun onResponse(call: Call<HashMap<String, Any?>>, response: Response<HashMap<String, Any?>>) {
+                if (response.isSuccessful) {
+                    Log.d("Barcode", "Barcode set successfully for product ID: $productId")
+                } else {
+                    Log.e("Barcode", "Error setting barcode: ${response.errorBody()?.string()}")
+                }
+            }
+
+            override fun onFailure(call: Call<HashMap<String, Any?>>, t: Throwable) {
+                Log.e("Barcode", "Network error: ${t.message}")
+            }
+        })
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun addVariationOfProduct(productOffer: ProductOffer, onComplete: (Int?) -> Unit) {
         val productOfferRequest = ProductOfferRequest(
             fields = mapOf(
                 "iblockId" to 15,
                 "name" to productOffer.name.toString(),
+                "measure" to productOffer.measure.toString(),
                 "parentId" to productOffer.parentId.toString(),
                 "dateCreate" to productOffer.dateCreate.toString(),
-                "purchasingPrice" to productOffer.purchasingPrice.toString()
+                "purchasingPrice" to productOffer.purchasingPrice.toString(),
+                "purchasingCurrency" to productOffer.purchasingCurrency.toString()
             )
         )
 
-        val callOffer: Call<Boolean>? = apiBitrix?.addVariationsOfProduct(productOfferRequest)
-
-        callOffer?.enqueue(object : Callback<Boolean> {
-            override fun onResponse(call: Call<Boolean>, response: Response<Boolean>) {
+        val callOffer: Call<ProductOfferResponse>? = apiBitrix?.addVariationsOfProduct(productOfferRequest)
+        callOffer?.enqueue(object : Callback<ProductOfferResponse> {
+            override fun onResponse(call: Call<ProductOfferResponse>, response: Response<ProductOfferResponse>) {
                 if (response.isSuccessful) {
-                    Log.d("API", "Элемент успешно добавлен")
+                    val productDetails = response.body()?.result?.get("offer") as? LinkedTreeMap<*, *>
+                    val productId = productDetails?.get("id")?.let { (it as? Double)?.toInt() }
+
+                    if (productId != null) {
+                        Log.d("Product", "Product ID: $productId")
+                    } else {
+                        Log.e("CatalogService", "Product details are null")
+                    }
+                    onComplete(productId)
                 } else {
                     Log.e("API", "Ошибка: ${response.errorBody()?.string()}")
+                    onComplete(null)
                 }
-                onComplete()
             }
 
-            override fun onFailure(call: Call<Boolean>, t: Throwable) {
+            override fun onFailure(call: Call<ProductOfferResponse>, t: Throwable) {
                 Log.e("API", "Ошибка сети: ${t.message}")
-                onComplete()
+                onComplete(null)
             }
         })
     }

@@ -40,7 +40,6 @@ class ProductAdapter(
 
     override fun onBindViewHolder(holder: ProductViewHolder, position: Int, payloads: List<Any>) {
         if (payloads.isNotEmpty() && payloads[0] == "barcode_update") {
-            // Обновляем только штрихкод, не трогая количество
             holder.tvBarcode.setText(productList[position].barcode)
             return
         }
@@ -124,10 +123,14 @@ class ProductAdapter(
     override fun getItemCount() = productList.size
 
 
-    fun updateFocusedProductBarcode(newBarcode: String) {
-        if (focusedPosition != -1) {
-            productList[focusedPosition].barcode = newBarcode
+    fun updateFocusedProductBarcode(newBarcode: String): Int? {
+        return if (focusedPosition != -1) {
+            val product = productList[focusedPosition]
+            product.barcode = newBarcode
             notifyItemChanged(focusedPosition, "barcode_update")
+            product.id
+        } else {
+            null
         }
     }
 }
