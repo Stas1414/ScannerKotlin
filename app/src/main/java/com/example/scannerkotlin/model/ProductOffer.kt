@@ -7,6 +7,7 @@ import java.time.LocalDateTime
 data class ProductOffer(
     val product: Product
 ){
+    val idInDocument: Int? get() = product.idInDocument
     var iblockId: Int? = null
     var catalogId: Int? = null
     val name: String? get() = product.name
@@ -41,7 +42,7 @@ data class ProductOffer(
     var quantityTrace: String? = "D"
     var purchasingCurrency: String? = "BYN"
     val purchasingPrice: Double = 0.0
-    var quantity: Double? = null
+    var quantity: Int? = product.quantity
     var quantityReserved: Double? = null
     var recurSchemeLength: Int? = 0
     var recurSchemeType: String? = "D"

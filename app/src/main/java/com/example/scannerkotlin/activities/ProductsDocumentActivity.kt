@@ -131,7 +131,9 @@ class ProductsDocumentActivity : AppCompatActivity() {
                     if (selectedProduct != null) {
                         Toast.makeText(this, "Вы выбрали: ${selectedProduct.name}", Toast.LENGTH_SHORT).show()
                         productList.add(0, selectedProduct)
+                        Log.d("Activity", "Product ${selectedProduct.name} добавлен в productList      (${productList.size})")
                         productOffersList.add(createProductOffer(selectedProduct))
+                        Log.d("Activity", "Product ${selectedProduct.name} добавлен в productOfferList   (${productOffersList.size})")
                         adapter.notifyItemInserted(0)
                         updateSaveButtonState()
                     } else {
@@ -184,12 +186,15 @@ class ProductsDocumentActivity : AppCompatActivity() {
 
         adapter = ProductAdapter(productList) { position ->
             deletedProductsList.add(productList[position])
+            Log.d("Activity", "Product ${productList[position].name} добавлен productList      (${deletedProductsList.size})")
             for(productOffer in productOffersList) {
                 if (productOffer.product == productList[position]) {
                     productOffersList.remove(productOffer)
+                    Log.d("Activity", "Product ${productOffer.name} удален из productOfferList      (${productOffersList.size})")
                 }
             }
             productList.removeAt(position)
+            Log.d("Activity", "productList    (${productList.size})")
             adapter.notifyItemRemoved(position)
             updateSaveButtonState()
         }
