@@ -35,6 +35,7 @@ class ProductsDocumentActivity : AppCompatActivity() {
     private var btnSave: Button? = null
     private var btnAddProduct: Button? = null
     private lateinit var adapter: ProductAdapter
+    private val baseList = mutableListOf<Product>()
     private val productList = mutableListOf<Product>()
     private val service by lazy { CatalogService() }
     private var productOffersList = mutableListOf<ProductOffer>()
@@ -86,6 +87,7 @@ class ProductsDocumentActivity : AppCompatActivity() {
 
         btnSave?.setOnClickListener {
             service.conductDocument(
+                baseList,
                 idDocument,
                 deletedProducts = deletedProductsList,
                 context = this,
@@ -231,6 +233,7 @@ class ProductsDocumentActivity : AppCompatActivity() {
                     if (!isFinishing) {
                         productList.clear()
                         productList.addAll(products)
+                        baseList.addAll(products)
                         adapter.notifyDataSetChanged()
                     }
 

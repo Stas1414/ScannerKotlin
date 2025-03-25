@@ -110,7 +110,8 @@ class CatalogService {
 
     private suspend fun deleteProducts(
         deletedProducts: List<Product>,
-        idDocument: Int
+        idDocument: Int,
+        baseList: MutableList<Product>
     ): Boolean = suspendCoroutine { continuation ->
         if (deletedProducts.isEmpty()) {
             continuation.resume(true)
@@ -120,30 +121,41 @@ class CatalogService {
         val latch = CountDownLatch(deletedProducts.size)
         var hasErrors = false
 
-        for (product in deletedProducts) {
-            val request = DeletedDocumentElementRequest(
-                id = product.idInDocument,
-                fields = mutableMapOf("docId" to idDocument)
-            )
+        deletedProducts.forEach { product ->
+            if (product in baseList) {
+                val request = DeletedDocumentElementRequest(
+                    id = product.idInDocument,
+                    fields = mutableMapOf("docId" to idDocument)
+                )
 
-            apiBitrix?.deleteDocumentElement(request)?.enqueue(object : Callback<HashMap<String, Any?>> {
-                override fun onResponse(call: Call<HashMap<String, Any?>>, response: Response<HashMap<String, Any?>>) {
-                    if (!response.isSuccessful) {
-                        hasErrors = true
-                        Log.d("deletedElementError", "Error from deleting")
-                    }
-                    latch.countDown()
-                }
+                apiBitrix?.deleteDocumentElement(request)
+                    ?.enqueue(object : Callback<HashMap<String, Any?>> {
+                        override fun onResponse(
+                            call: Call<HashMap<String, Any?>>,
+                            response: Response<HashMap<String, Any?>>
+                        ) {
+                            if (!response.isSuccessful) {
+                                hasErrors = true
+                                Log.d("deletedElementError", "Error from deleting")
+                            }
+                            latch.countDown()
+                        }
 
-                override fun onFailure(call: Call<HashMap<String, Any?>>, t: Throwable) {
+                        override fun onFailure(
+                            call: Call<HashMap<String, Any?>>,
+                            t: Throwable
+                        ) {
+                            hasErrors = true
+                            Log.d("deletedElementError", "Network error: ${t.message}")
+                            latch.countDown()
+                        }
+                    }) ?: run {
                     hasErrors = true
-                    Log.d("deletedElementError", "Network error: ${t.message}")
                     latch.countDown()
+
                 }
-            }) ?: run {
-                hasErrors = true
-                latch.countDown()
             }
+
         }
 
         Thread {
@@ -238,6 +250,7 @@ class CatalogService {
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun conductDocument(
+        baseList:MutableList<Product>,
         idDocument: Int?,
         context: Context,
         deletedProducts: MutableList<Product>,
@@ -257,19 +270,17 @@ class CatalogService {
 
         CoroutineScope(Dispatchers.IO).launch {
 
-//            updatedProducts.removeAll { updatedProduct ->
-//                productOffersList.any { it.product == updatedProduct }
-//            }
+
             try {
                 // 1. Удаляем продукты из документа
-//                val deleteSuccess = deleteProducts(deletedProducts, idDocument)
-//                if (!deleteSuccess) {
-//                    withContext(Dispatchers.Main) {
-//                        onLoading(false)
-//                        callback(false)
-//                    }
-//                    return@launch
-//                }
+                val deleteSuccess = deleteProducts(deletedProducts, idDocument, baseList)
+                if (!deleteSuccess) {
+                    withContext(Dispatchers.Main) {
+                        onLoading(false)
+                        callback(false)
+                    }
+                    return@launch
+                }
 
                 // 2. Сохраняем новые вариации продуктов (если есть)
                 val savedProducts = saveProductVariations(productOffersList)// уже с баркодом и со всем
