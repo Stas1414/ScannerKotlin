@@ -38,7 +38,7 @@ class ProductsDocumentActivity : AppCompatActivity() {
     private val productList = mutableListOf<Product>()
     private val service by lazy { CatalogService() }
     private var productOffersList = mutableListOf<ProductOffer>()
-    private var barcodesMap = mutableMapOf<Int, String>()
+    private var deletedProductsList = mutableListOf<Product>()
 
     private var scanDataReceiver: BroadcastReceiver? = null
 
@@ -85,16 +85,25 @@ class ProductsDocumentActivity : AppCompatActivity() {
         val idDocument: Int? = intent.getStringExtra("idDocument")?.toInt()
 
         btnSave?.setOnClickListener {
-            service.saveProductOffers(productOffersList) { isLoading ->
-                if (isLoading) {
-                    progressBar.visibility = View.VISIBLE
-                    Log.d("SaveProductOffers", "Сохранение началось...")
-                } else {
-                    progressBar.visibility = View.GONE
-                    Log.d("SaveProductOffers", "Сохранение завершено!")
+            service.conductDocument(
+                idDocument,
+                deletedProducts = deletedProductsList,
+                context = this,
+                updatedProducts = productList,
+                productOffersList = productOffersList,
+                onLoading = { isLoading ->
+                    progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+                },
+                callback = { success ->
+                    if (success) {
+                        Toast.makeText(this, "Документ успешно проведен", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this, "Ошибка при проведении документа", Toast.LENGTH_SHORT).show()
+                    }
                 }
-            }
+            )
         }
+
 
         btnAddProduct?.setOnClickListener {
             addProduct()
@@ -174,6 +183,12 @@ class ProductsDocumentActivity : AppCompatActivity() {
 
 
         adapter = ProductAdapter(productList) { position ->
+            deletedProductsList.add(productList[position])
+            for(productOffer in productOffersList) {
+                if (productOffer.product == productList[position]) {
+                    productOffersList.remove(productOffer)
+                }
+            }
             productList.removeAt(position)
             adapter.notifyItemRemoved(position)
             updateSaveButtonState()

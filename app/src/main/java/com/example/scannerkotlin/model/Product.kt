@@ -1,6 +1,7 @@
 package com.example.scannerkotlin.model
 
 data class Product(
+    var idInDocument: Int?,
     val id: Int,
     val iblockId: Int,
     var name: String?,
@@ -30,6 +31,7 @@ data class Product(
         }
 
     constructor() : this(
+        0,
         0,
         0,
         null,

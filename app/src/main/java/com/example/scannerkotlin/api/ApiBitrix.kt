@@ -1,11 +1,15 @@
 package com.example.scannerkotlin.api
 
+import com.example.scannerkotlin.request.AddDocumentElementRequest
 import com.example.scannerkotlin.request.BarcodeRequest
 import com.example.scannerkotlin.request.CatalogDocumentElementListRequest
 import com.example.scannerkotlin.request.CatalogDocumentListRequest
+import com.example.scannerkotlin.request.DeletedDocumentElementRequest
 import com.example.scannerkotlin.request.ProductIdRequest
 import com.example.scannerkotlin.request.ProductOfferRequest
 import com.example.scannerkotlin.request.ProductRequest
+import com.example.scannerkotlin.request.UpdateProductMeasureRequest
+import com.example.scannerkotlin.request.UpdatedDocumentElementsRequest
 import com.example.scannerkotlin.response.CatalogDocumentElementListResponse
 import com.example.scannerkotlin.response.CatalogDocumentListResponse
 import com.example.scannerkotlin.response.ProductBarcodeResponse
@@ -58,6 +62,26 @@ interface ApiBitrix {
     @GET("catalog.document.conduct")
     fun conductDocument(
         @Query("id") id: Int
-    ) : Call<Boolean>
+    ) : Call<HashMap<String, Any?>>
+
+    @POST("catalog.document.element.update")
+    fun updateDocumentElement(
+        @Body request: UpdatedDocumentElementsRequest
+    ) : Call<HashMap<String, Any?>>
+
+    @POST("catalog.document.element.delete")
+    fun deleteDocumentElement(
+        @Body request: DeletedDocumentElementRequest
+    ) : Call<HashMap<String, Any?>>
+
+    @POST("catalog.product.update")
+    fun updateProductMeasure(
+        @Body request: UpdateProductMeasureRequest
+    ) : Call<HashMap<String, Any?>>
+
+    @POST("catalog.document.element.add")
+    fun addDocumentElement(
+        @Body request: AddDocumentElementRequest
+    ) : Call<HashMap<String, Any?>>
 
 }
