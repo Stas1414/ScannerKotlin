@@ -181,28 +181,36 @@ class ProductsDocumentActivity : AppCompatActivity() {
 
 
 
+    @SuppressLint("NotifyDataSetChanged")
     private fun setupRecyclerView() {
         val recyclerView: RecyclerView = findViewById(R.id.rvProducts)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-
         adapter = ProductAdapter(productList) { position ->
-            deletedProductsList.add(productList[position])
-            Log.d("Activity", "Product ${productList[position].name} добавлен productList      (${deletedProductsList.size})")
-            for(productOffer in productOffersList) {
-                if (productOffer.product == productList[position]) {
-                    productOffersList.remove(productOffer)
-                    Log.d("Activity", "Product ${productOffer.name} удален из productOfferList      (${productOffersList.size})")
+            if (position in productList.indices) {
+                val removedProduct = productList.removeAt(position)
+                deletedProductsList.add(removedProduct)
+                productOffersList.removeAll { it.product == removedProduct }
+
+                Log.d("Activity", "Удалён продукт: ${removedProduct.name}, осталось ${productList.size} элементов")
+
+                if (productList.isEmpty()) {
+                    adapter.notifyDataSetChanged() // Полное обновление списка, если он пуст
+                } else {
+                    adapter.notifyItemRemoved(position) // Частичное обновление для плавного удаления
+                    adapter.notifyItemRangeChanged(position, productList.size) // Обновляем оставшиеся элементы
                 }
+
+                updateSaveButtonState()
             }
-            productList.removeAt(position)
-            Log.d("Activity", "productList    (${productList.size})")
-            adapter.notifyItemRemoved(position)
-            updateSaveButtonState()
         }
 
         recyclerView.adapter = adapter
     }
+
+
+
+
 
     private fun setupUI() {
 

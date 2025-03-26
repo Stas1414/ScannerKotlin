@@ -168,7 +168,7 @@ class CatalogService {
         updatedProducts: List<Product>,
         idDocument: Int
     ): Boolean = suspendCoroutine { continuation ->
-        Log.d("qqq","updateProductsInDoc: started with ${updatedProducts.size} products for document $idDocument ,  ${updatedProducts[0].name}, ${updatedProducts[1].name}")
+        Log.d("qqq","updateProductsInDoc: started with ${updatedProducts.size} products for document $idDocument ")
 
         if (updatedProducts.isEmpty()) {
             Log.d("qqqq","updateProductsInDoc: empty products list - returning true")
