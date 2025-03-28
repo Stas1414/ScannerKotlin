@@ -23,12 +23,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
 import com.example.scannerkotlin.adapter.ProductAdapter
-import com.example.scannerkotlin.mappers.ProductMeasureMapper
 import com.example.scannerkotlin.model.Product
 import com.example.scannerkotlin.model.ProductOffer
 import com.example.scannerkotlin.request.ProductRequest
-import com.example.scannerkotlin.service.CatalogService
-import java.time.LocalDateTime
+import com.example.scannerkotlin.service.CatalogDocumentComingService
 
 class ProductsDocumentActivity : AppCompatActivity() {
 
@@ -37,7 +35,7 @@ class ProductsDocumentActivity : AppCompatActivity() {
     private lateinit var adapter: ProductAdapter
     private val baseList = mutableListOf<Product>()
     private val productList = mutableListOf<Product>()
-    private val service by lazy { CatalogService() }
+    private val service by lazy { CatalogDocumentComingService() }
     private var productOffersList = mutableListOf<ProductOffer>()
     private var deletedProductsList = mutableListOf<Product>()
 

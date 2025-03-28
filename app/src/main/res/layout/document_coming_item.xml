@@ -11,7 +11,7 @@
         android:id="@+id/tvDocumentType"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/documentType"
+        android:text="@string/documentComingType"
         android:textSize="12sp"
         android:textColor="@android:color/darker_gray"/>
 

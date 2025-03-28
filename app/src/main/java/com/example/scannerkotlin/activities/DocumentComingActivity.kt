@@ -14,13 +14,13 @@ import com.example.scannerkotlin.R
 import com.example.scannerkotlin.adapter.DocumentAdapter
 import com.example.scannerkotlin.decoration.SpaceItemDecoration
 import com.example.scannerkotlin.listener.OnItemClickListener
-import com.example.scannerkotlin.service.CatalogService
+import com.example.scannerkotlin.service.CatalogDocumentComingService
 
-class DocumentActivity : AppCompatActivity(), OnItemClickListener {
+class DocumentComingActivity : AppCompatActivity(), OnItemClickListener {
 
     private lateinit var adapter: DocumentAdapter
-    private var service: CatalogService? = null
-    private lateinit var progressBar: ProgressBar // Объявим прогресс бар
+    private var service: CatalogDocumentComingService? = null
+    private lateinit var progressBar: ProgressBar
 
     @SuppressLint("MissingInflatedId", "NotifyDataSetChanged")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,7 +36,7 @@ class DocumentActivity : AppCompatActivity(), OnItemClickListener {
         val space = 15
         recyclerView.addItemDecoration(SpaceItemDecoration(space))
 
-        service = CatalogService()
+        service = CatalogDocumentComingService()
 
         adapter = DocumentAdapter(mutableListOf())
         recyclerView.adapter = adapter

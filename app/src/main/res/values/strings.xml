@@ -12,12 +12,14 @@
     <string name="productId">ID</string>
     <string name="productDescription">Описание</string>
     <string name="productPrice">Цена товара</string>
-    <string name="documentElements">Необработанные накладные</string>
+    <string name="documentComing">Документы прихода</string>
+    <string name="documentMoving">Документы перемещения</string>
     <string name="titleDocument">title</string>
     <string name="tvName">Name of Product</string>
     <string name="tvMeasure">products measure</string>
     <string name="tvQuantity">products quantity</string>
-    <string name="documentType">Документ прихода</string>
+    <string name="documentComingType">Документ прихода</string>
+    <string name="documentMovingType">Документ перемещения</string>
     <string name="documentNumber">Document number</string>
     <string name="arrivalDate">Дата прихода</string>
     <string name="btnOpenDocument">Открыть</string>
@@ -29,7 +31,7 @@
         <item>5</item>
     </string-array>
     <string name="btnAddProduct">Добавить товар</string>
-    <string name="btnSave">Сохранить</string>
+    <string name="btnSave">Сохранить и провести учет</string>
     <string name="quantity">Количество</string>
     <string name="barcode">Штрихкод</string>
 

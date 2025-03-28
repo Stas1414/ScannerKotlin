@@ -23,7 +23,7 @@ class DocumentAdapter(private val documentList: MutableList<Document>) :
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DocumentViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.document_item, parent, false)
+            .inflate(R.layout.document_coming_item, parent, false)
         return DocumentViewHolder(view)
     }
 

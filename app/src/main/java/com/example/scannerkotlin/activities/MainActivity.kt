@@ -51,7 +51,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startDocumentActivity() {
-        val intent = Intent(this, DocumentActivity::class.java)
+        val intent = Intent(this, DocumentComingActivity::class.java)
         startActivity(intent)
     }
 }

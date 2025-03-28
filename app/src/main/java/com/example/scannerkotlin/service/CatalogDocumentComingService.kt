@@ -1,10 +1,12 @@
 package com.example.scannerkotlin.service
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
+import com.example.scannerkotlin.activities.DocumentComingActivity
 import com.example.scannerkotlin.api.ApiBitrix
 import com.example.scannerkotlin.mappers.DocumentElementMapper
 import com.example.scannerkotlin.mappers.DocumentMapper
@@ -35,7 +37,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import retrofit2.Call
 import retrofit2.Callback
@@ -46,10 +47,9 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-class CatalogService {
+class CatalogDocumentComingService {
     private val baseUrl = "https://bitrix.izocom.by/rest/1/o2deu7wx7zfl3ib4/"
     private val barcodeBaseUrl = "https://bitrix.izocom.by/rest/1/sh1lchx64vrzcor6/"
 
@@ -250,7 +250,7 @@ class CatalogService {
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun conductDocument(
-        baseList:MutableList<Product>,
+        baseList: MutableList<Product>,
         idDocument: Int?,
         context: Context,
         deletedProducts: MutableList<Product>,
@@ -267,12 +267,8 @@ class CatalogService {
 
         onLoading(true)
 
-
         CoroutineScope(Dispatchers.IO).launch {
-
-
             try {
-                // 1. Удаляем продукты из документа
                 val deleteSuccess = deleteProducts(deletedProducts, idDocument, baseList)
                 if (!deleteSuccess) {
                     withContext(Dispatchers.Main) {
@@ -282,10 +278,8 @@ class CatalogService {
                     return@launch
                 }
 
-                // 2. Сохраняем новые вариации продуктов (если есть)
-                val savedProducts = saveProductVariations(productOffersList)// уже с баркодом и со всем
+                val savedProducts = saveProductVariations(productOffersList)
 
-                // 3. Добавляем продукты в документ (если есть новые)
                 if (savedProducts.isNotEmpty()) {
                     val addSuccess = addProductsToDoc(savedProducts, idDocument, updatedProducts)
                     if (!addSuccess) {
@@ -297,7 +291,6 @@ class CatalogService {
                     }
                 }
 
-                // 4. Обновляем существующие продукты в документе
                 val updateSuccess = updateProductsInDoc(updatedProducts, idDocument)
                 if (!updateSuccess) {
                     withContext(Dispatchers.Main) {
@@ -307,8 +300,17 @@ class CatalogService {
                     return@launch
                 }
 
-                // 5. Проводим документ
-                conductDoc(idDocument, context, onLoading, callback)
+                withContext(Dispatchers.Main) {
+                    conductDoc(idDocument, context, onLoading) { conductSuccess ->
+                        if (conductSuccess) {
+                            val intent = Intent(context, DocumentComingActivity::class.java)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            context.startActivity(intent)
+                        } else {
+                            callback(false)
+                        }
+                    }
+                }
 
             } catch (e: Exception) {
                 Log.e("conductDocument", "Ошибка: ${e.message}")
@@ -319,6 +321,7 @@ class CatalogService {
             }
         }
     }
+
 
     private suspend fun addProductsToDoc(
         savedProducts: List<Pair<Int, ProductOffer>>,
@@ -513,7 +516,10 @@ class CatalogService {
     ) {
         val documentsList = mutableListOf<Document>()
         val requestWithParams = CatalogDocumentListRequest(
-            filter = mutableMapOf("status" to "N")
+            filter = mutableMapOf(
+                "status" to "N",
+                "docType" to "A"
+            )
         )
 
 

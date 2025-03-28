@@ -15,7 +15,7 @@
         android:layout_height="wrap_content"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:text="@string/documentType"/>
+        android:text="@string/documentComingType"/>
 
 
     <LinearLayout
@@ -62,20 +62,22 @@
         <Button
             android:id="@+id/btnAddProduct"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="@string/btnAddProduct"
+            android:minHeight="48dp"
             android:backgroundTint="@color/blue"
+            android:text="@string/btnAddProduct"
             tools:ignore="ButtonStyle" />
 
         <Button
             android:id="@+id/btnSave"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_height="match_parent"
             android:layout_marginStart="8dp"
-            android:text="@string/btnSave"
+            android:layout_weight="1"
             android:backgroundTint="@color/gray"
+            android:minHeight="48dp"
+            android:text="@string/btnSave"
             tools:ignore="ButtonStyle" />
     </LinearLayout>
 
