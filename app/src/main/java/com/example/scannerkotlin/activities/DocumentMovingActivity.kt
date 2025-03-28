@@ -1,7 +1,6 @@
 package com.example.scannerkotlin.activities
 
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -13,13 +12,12 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
 import com.example.scannerkotlin.adapter.DocumentAdapter
 import com.example.scannerkotlin.decoration.SpaceItemDecoration
-import com.example.scannerkotlin.listener.OnItemClickListener
-import com.example.scannerkotlin.service.CatalogDocumentComingService
+import com.example.scannerkotlin.service.CatalogDocumentMovingService
 
-class DocumentComingActivity : AppCompatActivity(), OnItemClickListener {
+class DocumentMovingActivity : AppCompatActivity() {
 
     private lateinit var adapter: DocumentAdapter
-    private var service: CatalogDocumentComingService? = null
+    private var service: CatalogDocumentMovingService? = null
     private lateinit var progressBar: ProgressBar
 
     @SuppressLint("MissingInflatedId", "NotifyDataSetChanged")
@@ -36,7 +34,7 @@ class DocumentComingActivity : AppCompatActivity(), OnItemClickListener {
         val space = 15
         recyclerView.addItemDecoration(SpaceItemDecoration(space))
 
-        service = CatalogDocumentComingService()
+        service = CatalogDocumentMovingService()
 
         adapter = DocumentAdapter(mutableListOf())
         recyclerView.adapter = adapter
@@ -67,12 +65,5 @@ class DocumentComingActivity : AppCompatActivity(), OnItemClickListener {
 
 
         progressBar.visibility = View.VISIBLE
-    }
-
-    override fun onItemClick(title: String, idDocument: String) {
-        val intent = Intent(this, ProductsDocumentComingActivity::class.java)
-        intent.putExtra("title", title)
-        intent.putExtra("idDocument", idDocument)
-        startActivity(intent)
     }
 }

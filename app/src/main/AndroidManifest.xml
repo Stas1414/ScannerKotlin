@@ -16,13 +16,16 @@
         android:theme="@style/Theme.ScannerKotlin"
         tools:targetApi="31" >
         <activity
+            android:name=".activities.ProductsDocumentMovingActivity"
+            android:exported="false" />
+        <activity
             android:name=".activities.DocumentMovingActivity"
             android:exported="false" />
         <activity
             android:name=".activities.DocumentComingActivity"
             android:exported="false" />
         <activity
-            android:name=".activities.ProductsDocumentActivity"
+            android:name=".activities.ProductsDocumentComingActivity"
             android:exported="false" />
         <activity
             android:name=".activities.ScanActivity"

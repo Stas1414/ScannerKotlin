@@ -9,7 +9,7 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
-import com.example.scannerkotlin.activities.ProductsDocumentActivity
+import com.example.scannerkotlin.activities.ProductsDocumentComingActivity
 import com.example.scannerkotlin.model.Document
 
 class DocumentAdapter(private val documentList: MutableList<Document>) :
@@ -35,7 +35,7 @@ class DocumentAdapter(private val documentList: MutableList<Document>) :
 
         holder.btnOpen.setOnClickListener {
             val context = holder.itemView.context
-            val intent = Intent(context, ProductsDocumentActivity::class.java)
+            val intent = Intent(context, ProductsDocumentComingActivity::class.java)
             intent.putExtra("title", document.title)
             intent.putExtra("idDocument", document.id.toString())
             context.startActivity(intent)

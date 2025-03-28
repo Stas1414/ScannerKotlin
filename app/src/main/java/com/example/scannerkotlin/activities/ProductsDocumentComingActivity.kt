@@ -22,17 +22,17 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
-import com.example.scannerkotlin.adapter.ProductAdapter
+import com.example.scannerkotlin.adapter.ProductComingAdapter
 import com.example.scannerkotlin.model.Product
 import com.example.scannerkotlin.model.ProductOffer
 import com.example.scannerkotlin.request.ProductRequest
 import com.example.scannerkotlin.service.CatalogDocumentComingService
 
-class ProductsDocumentActivity : AppCompatActivity() {
+class ProductsDocumentComingActivity : AppCompatActivity() {
 
     private var btnSave: Button? = null
     private var btnAddProduct: Button? = null
-    private lateinit var adapter: ProductAdapter
+    private lateinit var adapter: ProductComingAdapter
     private val baseList = mutableListOf<Product>()
     private val productList = mutableListOf<Product>()
     private val service by lazy { CatalogDocumentComingService() }
@@ -184,7 +184,7 @@ class ProductsDocumentActivity : AppCompatActivity() {
         val recyclerView: RecyclerView = findViewById(R.id.rvProducts)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        adapter = ProductAdapter(productList) { position ->
+        adapter = ProductComingAdapter(productList) { position ->
             if (position in productList.indices) {
                 val removedProduct = productList.removeAt(position)
                 deletedProductsList.add(removedProduct)

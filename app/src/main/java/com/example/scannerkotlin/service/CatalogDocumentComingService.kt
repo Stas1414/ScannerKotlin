@@ -457,57 +457,6 @@ class CatalogDocumentComingService {
         })
     }
 
-//    @RequiresApi(Build.VERSION_CODES.O)
-//    fun processDocumentUpdate(
-//        deletedProducts: MutableList<Product>,
-//        updatedProducts: MutableList<Product>,
-//        productOffersList: MutableList<ProductOffer>,
-//        idDocument: Int,
-//        onLoading: (Boolean) -> Unit
-//    ) {
-//        onLoading(true)
-//
-//
-//        deleteDocumentElement(deletedProducts, idDocument) { deleteSuccess ->
-//            if (deleteSuccess) {
-//                Log.d("processDocumentUpdate", "Удаление завершено. Начинаем сохранение вариаций продуктов.")
-//
-//                saveProductOffers(productOffersList) { savedProducts ->
-//                    if (savedProducts.isNotEmpty()) {
-//                        Log.d("processDocumentUpdate", "Вариации продуктов сохранены. Начинаем добавление в документ.")
-//
-//
-//                        addProductsToDocument(savedProducts, idDocument) { addSuccess ->
-//                            if (addSuccess) {
-//                                Log.d("processDocumentUpdate", "Продукты добавлены в документ. Начинаем обновление.")
-//
-//
-//                                updateProductInDocument(deletedProducts, updatedProducts, idDocument) {
-//                                    Log.d("processDocumentUpdate", "Обновление завершено. Операция полностью завершена.")
-//                                    onLoading(false)
-//                                }
-//                            } else {
-//                                Log.d("processDocumentUpdate", "Ошибка при добавлении в документ.")
-//                                onLoading(false)
-//                            }
-//                        }
-//                    } else {
-//                        Log.d("processDocumentUpdate", "Нет сохраненных продуктов. Переходим к обновлению.")
-//                        updateProductInDocument(deletedProducts, updatedProducts, idDocument) {
-//                            Log.d("processDocumentUpdate", "Обновление завершено. Операция полностью завершена.")
-//                            onLoading(false)
-//                        }
-//                    }
-//                }
-//            } else {
-//                Log.d("processDocumentUpdate", "Ошибка при удалении.")
-//                onLoading(false)
-//            }
-//        }
-//    }
-
-
-
 
     fun performDocumentListRequest(
         onComplete: (List<Document>) -> Unit,

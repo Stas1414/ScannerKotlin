@@ -9,20 +9,20 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
-import com.example.scannerkotlin.activities.ProductsDocumentActivity
+import com.example.scannerkotlin.activities.ProductsDocumentComingActivity
 import com.example.scannerkotlin.model.Product
 
-class ProductAdapter(
+class ProductComingAdapter(
     private val productList: MutableList<Product>,
     private val onDelete: (Int) -> Unit
-) : RecyclerView.Adapter<ProductAdapter.ProductViewHolder>() {
+) : RecyclerView.Adapter<ProductComingAdapter.ProductViewHolder>() {
 
     private var focusedPosition: Int = -1
     private val measures = listOf("Штука", "Килограмм", "Литр", "Метр", "Грамм")
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_product, parent, false)
+            .inflate(R.layout.item_coming_product, parent, false)
         return ProductViewHolder(view)
     }
 
@@ -54,7 +54,7 @@ class ProductAdapter(
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 product.quantity = s?.toString()?.toIntOrNull() ?: 0
-                (holder.itemView.context as? ProductsDocumentActivity)?.updateSaveButtonState()
+                (holder.itemView.context as? ProductsDocumentComingActivity)?.updateSaveButtonState()
             }
 
             override fun afterTextChanged(s: Editable?) {}
@@ -65,7 +65,7 @@ class ProductAdapter(
         holder.spinnerMeasure.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
                 product.measureName = measures[pos]
-                (holder.itemView.context as? ProductsDocumentActivity)?.updateSaveButtonState()
+                (holder.itemView.context as? ProductsDocumentComingActivity)?.updateSaveButtonState()
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -88,7 +88,7 @@ class ProductAdapter(
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 if (focusedPosition == holder.adapterPosition) {
                     productList[focusedPosition].barcode = s.toString()
-                    (holder.itemView.context as? ProductsDocumentActivity)?.updateSaveButtonState()
+                    (holder.itemView.context as? ProductsDocumentComingActivity)?.updateSaveButtonState()
                 }
             }
 

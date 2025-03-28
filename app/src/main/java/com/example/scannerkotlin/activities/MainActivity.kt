@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startProductsActivity() {
-        val intent = Intent(this, ProductsDocumentActivity::class.java)
+        val intent = Intent(this, ProductsDocumentComingActivity::class.java)
         startActivity(intent)
     }
 
