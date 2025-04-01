@@ -11,14 +11,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
-import com.example.scannerkotlin.adapter.DocumentAdapter
+import com.example.scannerkotlin.adapter.DocumentComingAdapter
 import com.example.scannerkotlin.decoration.SpaceItemDecoration
 import com.example.scannerkotlin.listener.OnItemClickListener
 import com.example.scannerkotlin.service.CatalogDocumentComingService
 
 class DocumentComingActivity : AppCompatActivity(), OnItemClickListener {
 
-    private lateinit var adapter: DocumentAdapter
+    private lateinit var adapter: DocumentComingAdapter
     private var service: CatalogDocumentComingService? = null
     private lateinit var progressBar: ProgressBar
 
@@ -38,7 +38,7 @@ class DocumentComingActivity : AppCompatActivity(), OnItemClickListener {
 
         service = CatalogDocumentComingService()
 
-        adapter = DocumentAdapter(mutableListOf())
+        adapter = DocumentComingAdapter(mutableListOf())
         recyclerView.adapter = adapter
 
 

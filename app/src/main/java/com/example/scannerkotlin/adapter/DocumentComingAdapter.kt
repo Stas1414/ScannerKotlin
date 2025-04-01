@@ -12,8 +12,8 @@ import com.example.scannerkotlin.R
 import com.example.scannerkotlin.activities.ProductsDocumentComingActivity
 import com.example.scannerkotlin.model.Document
 
-class DocumentAdapter(private val documentList: MutableList<Document>) :
-    RecyclerView.Adapter<DocumentAdapter.DocumentViewHolder>() {
+class DocumentComingAdapter(private val documentList: MutableList<Document>) :
+    RecyclerView.Adapter<DocumentComingAdapter.DocumentViewHolder>() {
 
     class DocumentViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvDocumentNumber: TextView = itemView.findViewById(R.id.tvDocumentNumber)

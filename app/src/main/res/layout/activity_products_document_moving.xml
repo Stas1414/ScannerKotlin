@@ -40,7 +40,7 @@
 
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvProducts"
+        android:id="@+id/rvMovingProducts"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -58,16 +58,6 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:layout_marginTop="16dp">
-
-        <Button
-            android:id="@+id/btnMovingSaveAddProduct"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:minHeight="48dp"
-            android:backgroundTint="@color/blue"
-            android:text="@string/btnAddProduct"
-            tools:ignore="ButtonStyle" />
 
         <Button
             android:id="@+id/btnMovingSave"

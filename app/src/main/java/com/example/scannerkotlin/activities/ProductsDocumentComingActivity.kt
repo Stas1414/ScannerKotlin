@@ -42,6 +42,8 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
     private var scanDataReceiver: BroadcastReceiver? = null
 
     private lateinit var progressBar: ProgressBar
+    private lateinit var recyclerView: RecyclerView
+
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag", "NewApi")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,6 +55,7 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         btnSave = findViewById(R.id.btnSave)
         btnAddProduct = findViewById(R.id.btnAddProduct)
         progressBar = findViewById(R.id.progressBar)
+        recyclerView = findViewById(R.id.rvProducts)
 
 
         scanDataReceiver = object : BroadcastReceiver() {
@@ -181,7 +184,6 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
 
     @SuppressLint("NotifyDataSetChanged")
     private fun setupRecyclerView() {
-        val recyclerView: RecyclerView = findViewById(R.id.rvProducts)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
         adapter = ProductComingAdapter(productList) { position ->
@@ -193,10 +195,10 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
                 Log.d("Activity", "Удалён продукт: ${removedProduct.name}, осталось ${productList.size} элементов")
 
                 if (productList.isEmpty()) {
-                    adapter.notifyDataSetChanged() // Полное обновление списка, если он пуст
+                    adapter.notifyDataSetChanged()
                 } else {
-                    adapter.notifyItemRemoved(position) // Частичное обновление для плавного удаления
-                    adapter.notifyItemRangeChanged(position, productList.size) // Обновляем оставшиеся элементы
+                    adapter.notifyItemRemoved(position)
+                    adapter.notifyItemRangeChanged(position, productList.size)
                 }
 
                 updateSaveButtonState()
@@ -204,6 +206,9 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         }
 
         recyclerView.adapter = adapter
+
+        recyclerView.recycledViewPool.clear()
+        adapter.notifyDataSetChanged()
     }
 
 
@@ -240,6 +245,9 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
                         productList.clear()
                         productList.addAll(products)
                         baseList.addAll(products)
+
+
+                        recyclerView.recycledViewPool.clear()
                         adapter.notifyDataSetChanged()
                     }
 

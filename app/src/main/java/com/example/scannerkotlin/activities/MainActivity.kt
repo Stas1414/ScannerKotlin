@@ -31,11 +31,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         productsButton?.setOnClickListener {
-            startProductsActivity()
+            startDocumentMovingActivity()
         }
 
         documentButton?.setOnClickListener {
-            startDocumentActivity()
+            startDocumentComingActivity()
         }
 
     }
@@ -45,12 +45,12 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
-    private fun startProductsActivity() {
-        val intent = Intent(this, ProductsDocumentComingActivity::class.java)
+    private fun startDocumentMovingActivity() {
+        val intent = Intent(this, DocumentMovingActivity::class.java)
         startActivity(intent)
     }
 
-    private fun startDocumentActivity() {
+    private fun startDocumentComingActivity() {
         val intent = Intent(this, DocumentComingActivity::class.java)
         startActivity(intent)
     }

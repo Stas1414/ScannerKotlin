@@ -84,4 +84,7 @@ interface ApiBitrix {
         @Body request: AddDocumentElementRequest
     ) : Call<HashMap<String, Any?>>
 
+    @GET("catalog.store.list")
+    fun getStoreList():Call<HashMap<String, Any?>>
+
 }

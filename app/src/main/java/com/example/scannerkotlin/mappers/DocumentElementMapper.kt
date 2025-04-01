@@ -13,7 +13,8 @@ class DocumentElementMapper {
             purchasingPrice = (map["purchasingPrice"] as? Double),
             storeFrom = (map["storeFrom"] as? Double)?.toInt(),
             storeTo = (map["storeTo"] as? Double)?.toInt(),
-            id = (map["id"] as? Double)?.toInt()
+            id = (map["id"] as? Double)?.toInt(),
+            name = null
         )
     }
 }
