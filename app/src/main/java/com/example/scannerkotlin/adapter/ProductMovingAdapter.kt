@@ -12,6 +12,8 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
+import com.example.scannerkotlin.activities.ProductsDocumentComingActivity
+import com.example.scannerkotlin.activities.ProductsDocumentMovingActivity
 import com.example.scannerkotlin.model.DocumentElement
 import com.example.scannerkotlin.model.Store
 
@@ -34,10 +36,10 @@ class ProductMovingAdapter(
     override fun onBindViewHolder(holder: DocumentViewHolder, position: Int) {
         val document = documentList[position]
 
-        // Устанавливаем название товара
+
         holder.tvProductName.text = document.name ?: "Без названия"
 
-        // Инициализация спиннеров
+
         val storeAdapter = ArrayAdapter(
             context,
             android.R.layout.simple_spinner_dropdown_item,
@@ -46,7 +48,7 @@ class ProductMovingAdapter(
         holder.spinnerFrom.adapter = storeAdapter
         holder.spinnerTo.adapter = storeAdapter
 
-        // Устанавливаем выбранные позиции в спиннерах
+
         document.storeFrom?.let { fromId ->
             storeList.indexOfFirst { it.id == fromId }.takeIf { it != -1 }?.let {
                 holder.spinnerFrom.setSelection(it)
@@ -59,10 +61,11 @@ class ProductMovingAdapter(
             }
         }
 
-        // Обработчики выбора в спиннерах
+
         holder.spinnerFrom.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
                 document.storeFrom = storeList[pos].id
+                (holder.itemView.context as? ProductsDocumentMovingActivity)?.updateSaveButtonState()
             }
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
@@ -70,21 +73,19 @@ class ProductMovingAdapter(
         holder.spinnerTo.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
                 document.storeTo = storeList[pos].id
+                (holder.itemView.context as? ProductsDocumentMovingActivity)?.updateSaveButtonState()
             }
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
 
-        // Устанавливаем доступное количество
+
         val availableAmount = document.amount ?: 0.0
         holder.availableQuantity.text = "Доступно: $availableAmount"
 
-        // Удаляем предыдущий TextWatcher
         holder.etQuantity.removeTextChangedListener(holder.quantityTextWatcher)
 
-        // Устанавливаем начальное значение
         holder.etQuantity.setText(document.amount?.takeIf { it != 0.0 }?.toString() ?: "")
 
-        // Создаем новый TextWatcher
         holder.quantityTextWatcher = object : TextWatcher {
             private var lastValidValue = holder.etQuantity.text.toString()
 
@@ -92,22 +93,24 @@ class ProductMovingAdapter(
                 lastValidValue = s?.toString() ?: ""
             }
 
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                (holder.itemView.context as? ProductsDocumentMovingActivity)?.updateSaveButtonState()
+            }
 
             override fun afterTextChanged(s: Editable?) {
                 val input = s?.toString() ?: ""
 
-                // Если поле пустое
+
                 if (input.isEmpty()) {
                     document.amount = null
                     return
                 }
 
-                // Проверяем корректность ввода
+
                 if (input.matches(Regex("^\\d*\\.?\\d*$"))) {
                     val value = input.toDoubleOrNull() ?: 0.0
 
-                    // Проверяем, не превышает ли ввод доступное количество
+
                     if (value > availableAmount) {
                         holder.etQuantity.setText(availableAmount.toString())
                         holder.etQuantity.setSelection(holder.etQuantity.text.length)
@@ -133,10 +136,11 @@ class ProductMovingAdapter(
     }
     override fun getItemCount(): Int = documentList.size
 
-    fun removeItem(position: Int) {
-        documentList.removeAt(position)
-        notifyItemRemoved(position)
-        notifyItemRangeChanged(position, documentList.size)
+    @SuppressLint("NotifyDataSetChanged")
+    fun updateData(newItems: List<DocumentElement>) {
+        documentList.clear()
+        documentList.addAll(newItems)
+        notifyDataSetChanged()
     }
 
     inner class DocumentViewHolder(view: View) : RecyclerView.ViewHolder(view) {

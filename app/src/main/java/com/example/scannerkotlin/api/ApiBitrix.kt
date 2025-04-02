@@ -10,11 +10,13 @@ import com.example.scannerkotlin.request.ProductOfferRequest
 import com.example.scannerkotlin.request.ProductRequest
 import com.example.scannerkotlin.request.UpdateProductMeasureRequest
 import com.example.scannerkotlin.request.UpdatedDocumentElementsRequest
+import com.example.scannerkotlin.request.VariationsRequest
 import com.example.scannerkotlin.response.CatalogDocumentElementListResponse
 import com.example.scannerkotlin.response.CatalogDocumentListResponse
 import com.example.scannerkotlin.response.ProductBarcodeResponse
 import com.example.scannerkotlin.response.ProductOfferResponse
 import com.example.scannerkotlin.response.ProductResponse
+import com.example.scannerkotlin.response.VariationsResponse
 import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -37,6 +39,11 @@ interface ApiBitrix {
     fun addVariationsOfProduct(
         @Body request: ProductOfferRequest
     ): Call<ProductOfferResponse>
+
+    @POST("catalog.product.offer.list")
+    fun getVariations(
+        @Body request: VariationsRequest
+    ): Call<VariationsResponse>
 
     @POST("catalog.product.list")
     fun getProducts (

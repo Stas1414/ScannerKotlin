@@ -12,18 +12,18 @@ class ProductToDocumentElementMapper {
         storeTo: Int? = null
     ): DocumentElement {
         return DocumentElement(
-            id = product.idInDocument,
+            id = null,
             amount = product.quantity?.toDouble(),
             docId = docId,
             elementId = product.id,
-            purchasingPrice = null, // Нет соответствия в Product
+            purchasingPrice = 0.0,
             storeFrom = storeFrom,
             storeTo = storeTo,
             name = product.name
         )
     }
 
-    // Дополнительно: метод для преобразования списка
+
     fun mapList(
         products: List<Product>,
         docId: Long? = null,

@@ -8,7 +8,11 @@ import android.content.IntentFilter
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.ArrayAdapter
+import android.widget.Button
+import android.widget.ListView
 import android.widget.ProgressBar
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -21,6 +25,7 @@ import com.example.scannerkotlin.mappers.DocumentElementMapper
 import com.example.scannerkotlin.mappers.ProductMapper
 import com.example.scannerkotlin.mappers.ProductToDocumentElementMapper
 import com.example.scannerkotlin.model.DocumentElement
+import com.example.scannerkotlin.model.Product
 import com.example.scannerkotlin.model.Store
 import com.example.scannerkotlin.request.ProductIdRequest
 import com.example.scannerkotlin.response.ProductBarcodeResponse
@@ -34,6 +39,9 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 class ProductsDocumentMovingActivity : AppCompatActivity() {
+
+    private var btnAdd: Button? = null
+    private var btnSave: Button? = null
 
     private var scanDataReceiver: BroadcastReceiver? = null
 
@@ -59,6 +67,8 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
 
     private lateinit var recyclerView: RecyclerView
 
+    private val mapper = ProductToDocumentElementMapper()
+
 
 
 
@@ -67,14 +77,25 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_products_document_moving)
 
+        btnAdd = findViewById(R.id.btnMovingAdd)
+        btnSave = findViewById(R.id.btnMovingSave)
+
         recyclerView = findViewById(R.id.rvMovingProducts)
         progressBar = findViewById(R.id.progressBar)
 
         recyclerView.layoutManager = LinearLayoutManager(this)
 
 
-        adapter = ProductMovingAdapter(this, mutableListOf(), mutableListOf()) { position ->
-            adapter.removeItem(position)
+        adapter = ProductMovingAdapter(
+            this@ProductsDocumentMovingActivity,
+            elements,
+            storeList
+        ) { position ->
+
+            val removedItem = elements.removeAt(position)
+            deletedProduct.add(removedItem)
+            adapter.updateData(elements)
+            updateSaveButtonState()
         }
         recyclerView.adapter = adapter
 
@@ -92,6 +113,27 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
         }
 
         registerReceiver(scanDataReceiver, IntentFilter("Scan_data_received"))
+
+        btnAdd?.setOnClickListener {
+            service.getVariations { products ->
+                if (products.isEmpty()) {
+                    showAlert("Нет доступных продуктов", emptyList()) {}
+                } else {
+                    showAlert("Выберите продукт", products) { selectedProduct ->
+                        if (selectedProduct != null) {
+                            val newElement = mapper.map(selectedProduct,intent.getStringExtra("idDocument")?.toLong())
+                            Toast.makeText(this, "Вы выбрали: ${selectedProduct.name}", Toast.LENGTH_SHORT).show()
+                            elements.add(0, newElement)
+                            newProductInDocument.add(newElement)
+                            adapter.notifyItemInserted(0)
+                            updateSaveButtonState()
+                        } else {
+                            Toast.makeText(this, "Выбор отменён", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+        }
     }
 
 
@@ -102,11 +144,9 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
         val idDocument = intent.getStringExtra("idDocument")?.toIntOrNull() ?: return
 
         try {
-
             service.getStoreList { stores ->
                 storeList.clear()
                 storeList.addAll(stores)
-
 
                 service.performDocumentElementsRequest(idDocument) { products ->
                     Log.d("ProductsActivity", "Loaded products: ${products.size}")
@@ -115,28 +155,16 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                         if (!isFinishing) {
                             elements.clear()
                             elements.addAll(products)
+                            baseList.clear()
                             baseList.addAll(products)
 
-
-                            adapter = ProductMovingAdapter(
-                                this@ProductsDocumentMovingActivity,
-                                elements,
-                                storeList
-                            ) { position ->
-                                adapter.removeItem(position)
-                                deletedProduct.add(elements[position])
-                                elements.removeAt(position)
-                            }
-                            recyclerView.adapter = adapter
-
-                            recyclerView.recycledViewPool.clear()
+                            // Не создаем новый адаптер, а обновляем данные
                             adapter.notifyDataSetChanged()
                         }
                         progressBar.visibility = View.GONE
                     }
                 }
             }
-
         } catch (e: Exception) {
             Log.e("ProductsActivity", "Error loading products", e)
             progressBar.visibility = View.GONE
@@ -179,7 +207,6 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                 if (response.isSuccessful) {
                     val productDetails = response.body()?.result?.get("product") as? LinkedTreeMap<*, *>
                     if (productDetails != null) {
-                        val mapper = ProductToDocumentElementMapper()
                         val productMapper = ProductMapper()
                         val product = productMapper.mapToProduct(productDetails)
                         val element = mapper.map(product, productId.toLong())
@@ -241,12 +268,8 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
 
     private fun showAlertScanInfo(element: DocumentElement, onAddProduct: () -> Unit) {
         val storeName = findNameOfStore(element.storeFrom)
-//        if (storeName == null) {
-//            showAlertInfo("Название склада null")
-//            return
-//        }
         AlertDialog.Builder(this).apply {
-            setTitle("Информация о товаре")
+            setTitle("Подтверждение товара")
             setMessage("${element.name} \n${element.amount} \n$storeName")
             setCancelable(false)
             setPositiveButton("Добавить товар") { dialog, _ ->
@@ -259,15 +282,14 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
         }.create().show()
     }
 
-    private fun areAllFieldsFilled(): Boolean {
-        return productList.all { product ->
-            (product.quantity ?: 0) > 0 &&
-                    !product.barcode.isNullOrEmpty()
+    private fun areAllFieldsFilled(elements: List<DocumentElement>): Boolean {
+        return elements.all { product ->
+            (product.amount ?: 0.0) > 0 && product.storeFrom != null && product.storeTo != null && product.storeFrom != product.storeTo
         }
     }
 
     fun updateSaveButtonState() {
-        val isAllFieldsFilled = areAllFieldsFilled()
+        val isAllFieldsFilled = areAllFieldsFilled(elements)
         btnSave?.isEnabled = isAllFieldsFilled
         btnSave?.setBackgroundColor(
             if (isAllFieldsFilled) {
@@ -277,6 +299,37 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
             }
 
         )
+    }
+
+    private fun showAlert(
+        title: String,
+        products: List<Product>,
+        onProductSelected: (Product?) -> Unit
+    ) {
+        val builder = android.app.AlertDialog.Builder(this)
+        builder.setTitle(title)
+
+        val productNames = products.map { it.name }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, productNames)
+
+        val listView = ListView(this)
+        listView.adapter = adapter
+
+        builder.setView(listView)
+        builder.setNegativeButton("Закрыть") { dialog, _ ->
+            onProductSelected(null)
+            dialog.dismiss()
+        }
+
+        val dialog = builder.create()
+
+        listView.setOnItemClickListener { _, _, position, _ ->
+            val selectedProduct = products[position]
+            onProductSelected(selectedProduct)
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
 

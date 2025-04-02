@@ -15,9 +15,11 @@ import com.example.scannerkotlin.model.Store
 import com.example.scannerkotlin.request.CatalogDocumentElementListRequest
 import com.example.scannerkotlin.request.CatalogDocumentListRequest
 import com.example.scannerkotlin.request.ProductRequest
+import com.example.scannerkotlin.request.VariationsRequest
 import com.example.scannerkotlin.response.CatalogDocumentElementListResponse
 import com.example.scannerkotlin.response.CatalogDocumentListResponse
 import com.example.scannerkotlin.response.ProductResponse
+import com.example.scannerkotlin.response.VariationsResponse
 import com.google.gson.internal.LinkedTreeMap
 import retrofit2.Call
 import retrofit2.Callback
@@ -41,6 +43,36 @@ class CatalogDocumentMovingService {
 
 
 
+
+
+    fun getVariations(onComplete: (List<Product>) -> Unit){
+
+        val request = VariationsRequest()
+        val callVariations: Call<VariationsResponse>? = apiBitrix?.getVariations(request)
+        callVariations?.enqueue(object : Callback<VariationsResponse> {
+            override fun onResponse(
+                call: Call<VariationsResponse>,
+                response: Response<VariationsResponse>
+            ) {
+                if (response.isSuccessful){
+                    val productMapper = ProductMapper()
+                    val offers = response.body()?.result?.offers ?: emptyList()
+                    val products = offers.map { map -> productMapper.mapToProduct(map) }
+                    onComplete(products)
+                }
+                else {
+                    onComplete(emptyList())
+                }
+
+            }
+
+            override fun onFailure(call: Call<VariationsResponse>, t: Throwable) {
+                Log.d("Error", "Error request")
+                onComplete(emptyList())
+            }
+
+        })
+    }
 
     fun getStoreList(
         onComplete: (List<Store>) -> Unit
