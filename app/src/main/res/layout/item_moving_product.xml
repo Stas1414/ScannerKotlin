@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -5,120 +6,81 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="12dp"
-    android:background="@drawable/item_border"
-    android:layout_marginBottom="8dp">
+    android:padding="8dp"
+    android:background="@android:color/white">
 
-    <!-- Верхняя строка с названием товара и кнопкой удаления -->
+    <!-- Верхняя строка: Название товара + кнопка удаления -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        tools:ignore="UseCompoundDrawables">
 
         <TextView
-            android:id="@+id/tvProductMovingName"
+            android:id="@+id/tvProductName"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="Товар1"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:maxLines="1"
-            android:ellipsize="end"
-            tools:ignore="HardcodedText" />
+            android:layout_weight="1" />
 
-        <ImageButton
-            android:id="@+id/btnMovingDelete"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:padding="8dp"
-            app:srcCompat="@drawable/ic_delete_red"
-            app:tint="@color/holo_red_dark"
-            tools:ignore="ContentDescription,TouchTargetSizeCheck,SpeakableTextPresentCheck" />
+        <ImageView
+            android:id="@+id/btnDelete"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@android:drawable/ic_delete"
+            android:padding="4dp"
+            app:tint="@android:color/holo_red_dark"
+            tools:ignore="ContentDescription" />
     </LinearLayout>
 
-    <!-- Спиннеры выбора складов -->
+    <!-- Спиннеры -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:layout_marginTop="8dp">
 
         <Spinner
-            android:id="@+id/spinnerStoreTo"
+            android:id="@+id/spinnerItem1"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@drawable/rounded_background"
-            android:padding="10dp"
-            tools:ignore="TouchTargetSizeCheck" />
+            android:minHeight="48dp"
+            android:padding="8dp"/>
 
         <Spinner
-            android:id="@+id/spinnerStoreFrom"
+            android:id="@+id/spinnerItem2"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:background="@drawable/rounded_background"
-            android:padding="10dp"
-            tools:ignore="TouchTargetSizeCheck" />
+            android:minHeight="48dp"
+            android:padding="8dp" />
     </LinearLayout>
 
-    <!-- Блок с доступным количеством -->
-    <LinearLayout
+    <!-- Доступное количество -->
+    <TextView
+        android:id="@+id/tvAvailable"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Доступно:"
+        android:textSize="14sp"
+        android:layout_marginTop="8dp"/>
+
+    <!-- Поле ввода количества -->
+    <EditText
+        android:id="@+id/etQuantity"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp"
-        android:layout_marginTop="8dp">
-
-        <TextView
-            android:id="@+id/tvAvailableLabel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Доступно: "
-            android:textSize="14sp"
-            tools:ignore="HardcodedText" />
-
-        <TextView
-            android:id="@+id/tvAvailableQuantity"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:maxLines="1"
-            android:ellipsize="end" />
-    </LinearLayout>
-
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp"
-        android:layout_marginTop="8dp"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Введите количество: "
-            android:textSize="14sp"
-            tools:ignore="HardcodedText" />
-
-        <EditText
-            android:id="@+id/movingQuantity"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:autofillHints=""
-            android:background="@drawable/edittext_border"
-            android:hint="0"
-            android:inputType="number"
-            android:maxLines="1"
-            android:textSize="14sp"
-            tools:ignore="HardcodedText,TouchTargetSizeCheck" />
-    </LinearLayout>
+        android:layout_marginTop="4dp"
+        android:background="@drawable/rounded_background"
+        android:hint="Введите количество"
+        android:inputType="number"
+        android:minHeight="48dp" />
 </LinearLayout>

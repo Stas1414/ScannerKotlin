@@ -1,127 +1,167 @@
 package com.example.scannerkotlin.adapter
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.text.Editable
+import android.text.InputFilter
 import android.text.TextWatcher
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.Spinner
-import android.widget.TextView
+import android.widget.*
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
 import com.example.scannerkotlin.model.DocumentElement
 import com.example.scannerkotlin.model.Store
 
 class ProductMovingAdapter(
-    private val items: MutableList<DocumentElement>,
-    private val stores: MutableList<Store>,
-    private val onItemDeleted: (position: Int) -> Unit,
-    private val onQuantityChanged: (position: Int, quantity: Double) -> Unit,
-    private val onStoreSelected: (position: Int, fromStoreId: Int?, toStoreId: Int?) -> Unit
-) : RecyclerView.Adapter<ProductMovingAdapter.MovingViewHolder>() {
+    private val context: Context,
+    private val documentList: MutableList<DocumentElement>,
+    private val storeList: List<Store>,
+    private val onDeleteClick: (Int) -> Unit
+) : RecyclerView.Adapter<ProductMovingAdapter.DocumentViewHolder>() {
 
-    inner class MovingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val tvProductName: TextView = itemView.findViewById(R.id.tvProductMovingName)
-        val btnDelete: ImageButton = itemView.findViewById(R.id.btnMovingDelete)
-        val spinnerFrom: Spinner = itemView.findViewById(R.id.spinnerStoreFrom)
-        val spinnerTo: Spinner = itemView.findViewById(R.id.spinnerStoreTo)
-        val tvAvailableQuantity: TextView = itemView.findViewById(R.id.tvAvailableQuantity)
-        val etQuantity: EditText = itemView.findViewById(R.id.movingQuantity)
+    private val storeTitles = storeList.map { it.title }
+
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DocumentViewHolder {
+        val view = LayoutInflater.from(context).inflate(R.layout.item_moving_product, parent, false)
+        return DocumentViewHolder(view)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MovingViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_moving_product, parent, false)
-        return MovingViewHolder(view)
-    }
+    @SuppressLint("SetTextI18n")
+    override fun onBindViewHolder(holder: DocumentViewHolder, position: Int) {
+        val document = documentList[position]
 
-    override fun onBindViewHolder(holder: MovingViewHolder, @SuppressLint("RecyclerView") position: Int) {
-        val item = items[position]
+        // Устанавливаем название товара
+        holder.tvProductName.text = document.name ?: "Без названия"
 
-        // Установка названия товара
-        holder.tvProductName.text = item.name ?: ""
-
-        // Установка доступного количества (если есть такая информация)
-         holder.tvAvailableQuantity.text = item.amount.toString()
-
-        // Установка количества
-        holder.etQuantity.setText(item.amount?.toString() ?: "0")
-
-        // Настройка адаптеров для спиннеров
+        // Инициализация спиннеров
         val storeAdapter = ArrayAdapter(
-            holder.itemView.context,
-            android.R.layout.simple_spinner_item,
-            stores.map { it.title }
-        ).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
-
+            context,
+            android.R.layout.simple_spinner_dropdown_item,
+            storeList.map { it.title }
+        )
         holder.spinnerFrom.adapter = storeAdapter
         holder.spinnerTo.adapter = storeAdapter
 
-        // Выбор текущих складов в спиннерах
-        item.storeFrom?.let { fromId ->
-            val fromPos = stores.indexOfFirst { it.id == fromId }
-            if (fromPos != -1) holder.spinnerFrom.setSelection(fromPos)
-        }
-
-        item.storeTo?.let { toId ->
-            val toPos = stores.indexOfFirst { it.id == toId }
-            if (toPos != -1) holder.spinnerTo.setSelection(toPos)
-        }
-
-        // Обработка изменения количества
-        holder.etQuantity.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                try {
-                    val quantity = s.toString().toDouble()
-                    item.amount = quantity
-                    onQuantityChanged(position, quantity)
-                } catch (e: NumberFormatException) {
-                    item.amount = 0.0
-                }
+        // Устанавливаем выбранные позиции в спиннерах
+        document.storeFrom?.let { fromId ->
+            storeList.indexOfFirst { it.id == fromId }.takeIf { it != -1 }?.let {
+                holder.spinnerFrom.setSelection(it)
             }
+        }
 
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-        })
+        document.storeTo?.let { toId ->
+            storeList.indexOfFirst { it.id == toId }.takeIf { it != -1 }?.let {
+                holder.spinnerTo.setSelection(it)
+            }
+        }
 
-        // Обработка выбора складов
+        // Обработчики выбора в спиннерах
         holder.spinnerFrom.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
-                item.storeFrom = stores[pos].id
-                onStoreSelected(position, item.storeFrom, item.storeTo)
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
+                document.storeFrom = storeList[pos].id
             }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            override fun onNothingSelected(parent: AdapterView<*>) {}
         }
 
         holder.spinnerTo.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
-                item.storeTo = stores[pos].id
-                onStoreSelected(position, item.storeFrom, item.storeTo)
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
+                document.storeTo = storeList[pos].id
+            }
+            override fun onNothingSelected(parent: AdapterView<*>) {}
+        }
+
+        // Устанавливаем доступное количество
+        val availableAmount = document.amount ?: 0.0
+        holder.availableQuantity.text = "Доступно: $availableAmount"
+
+        // Удаляем предыдущий TextWatcher
+        holder.etQuantity.removeTextChangedListener(holder.quantityTextWatcher)
+
+        // Устанавливаем начальное значение
+        holder.etQuantity.setText(document.amount?.takeIf { it != 0.0 }?.toString() ?: "")
+
+        // Создаем новый TextWatcher
+        holder.quantityTextWatcher = object : TextWatcher {
+            private var lastValidValue = holder.etQuantity.text.toString()
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                lastValidValue = s?.toString() ?: ""
             }
 
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+
+            override fun afterTextChanged(s: Editable?) {
+                val input = s?.toString() ?: ""
+
+                // Если поле пустое
+                if (input.isEmpty()) {
+                    document.amount = null
+                    return
+                }
+
+                // Проверяем корректность ввода
+                if (input.matches(Regex("^\\d*\\.?\\d*$"))) {
+                    val value = input.toDoubleOrNull() ?: 0.0
+
+                    // Проверяем, не превышает ли ввод доступное количество
+                    if (value > availableAmount) {
+                        holder.etQuantity.setText(availableAmount.toString())
+                        holder.etQuantity.setSelection(holder.etQuantity.text.length)
+                        document.amount = availableAmount
+                    } else {
+                        document.amount = value
+                    }
+                } else {
+
+                    holder.etQuantity.setText(lastValidValue)
+                    holder.etQuantity.setSelection(lastValidValue.length)
+                }
+            }
         }
 
-        // Обработка удаления элемента
+
+        holder.etQuantity.addTextChangedListener(holder.quantityTextWatcher)
+
+
         holder.btnDelete.setOnClickListener {
-            onItemDeleted(position)
+            onDeleteClick(position)
         }
     }
+    override fun getItemCount(): Int = documentList.size
 
-    override fun getItemCount(): Int = items.size
+    fun removeItem(position: Int) {
+        documentList.removeAt(position)
+        notifyItemRemoved(position)
+        notifyItemRangeChanged(position, documentList.size)
+    }
 
-    @SuppressLint("NotifyDataSetChanged")
-    fun updateStores(newStores: List<Store>) {
-        stores.clear()
-        stores.addAll(newStores)
-        notifyDataSetChanged()
+    inner class DocumentViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val tvProductName: TextView = view.findViewById(R.id.tvProductName)
+        val spinnerFrom: Spinner = view.findViewById(R.id.spinnerItem1)
+        val spinnerTo: Spinner = view.findViewById(R.id.spinnerItem2)
+        val etQuantity: EditText = view.findViewById(R.id.etQuantity)
+        val availableQuantity: TextView = view.findViewById(R.id.tvAvailable)
+        val btnDelete: ImageView = view.findViewById(R.id.btnDelete)
+
+
+        var quantityTextWatcher: TextWatcher = object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {}
+        }
+
+        init {
+            val adapter = ArrayAdapter(
+                itemView.context,
+                android.R.layout.simple_spinner_dropdown_item,
+                storeTitles
+            )
+            spinnerTo.adapter = adapter
+            spinnerFrom.adapter = adapter
+        }
     }
 }

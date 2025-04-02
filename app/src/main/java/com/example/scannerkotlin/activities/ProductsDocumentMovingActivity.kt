@@ -11,12 +11,15 @@ import android.view.View
 import android.widget.ProgressBar
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
 import com.example.scannerkotlin.adapter.ProductMovingAdapter
 import com.example.scannerkotlin.api.ApiBitrix
 import com.example.scannerkotlin.mappers.DocumentElementMapper
+import com.example.scannerkotlin.mappers.ProductMapper
+import com.example.scannerkotlin.mappers.ProductToDocumentElementMapper
 import com.example.scannerkotlin.model.DocumentElement
 import com.example.scannerkotlin.model.Store
 import com.example.scannerkotlin.request.ProductIdRequest
@@ -43,6 +46,8 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
 
     private val elements: MutableList<DocumentElement> = mutableListOf()
     private val baseList:MutableList<DocumentElement> = mutableListOf()
+    private val deletedProduct:MutableList<DocumentElement> = mutableListOf()
+    private val newProductInDocument:MutableList<DocumentElement> = mutableListOf()
 
     private lateinit var adapter:ProductMovingAdapter
 
@@ -62,33 +67,18 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_products_document_moving)
 
-        recyclerView = findViewById(com.example.scannerkotlin.R.id.rvMovingProducts)
+        recyclerView = findViewById(R.id.rvMovingProducts)
         progressBar = findViewById(R.id.progressBar)
 
-        loadProducts()
-
         recyclerView.layoutManager = LinearLayoutManager(this)
-        adapter = ProductMovingAdapter(
-            items = elements,
-            stores = storeList,
-            onItemDeleted = { position ->
-                // Обработка удаления элемента
-                elements.removeAt(position)
-                adapter.notifyItemRemoved(position)
-            },
-            onQuantityChanged = { position, quantity ->
-                // Обработка изменения количества
-                elements[position].amount = quantity
-            },
-            onStoreSelected = { position, fromStoreId, toStoreId ->
-                // Обработка изменения складов
-                elements[position].storeFrom = fromStoreId
-                elements[position].storeTo = toStoreId
-            }
-        )
+
+
+        adapter = ProductMovingAdapter(this, mutableListOf(), mutableListOf()) { position ->
+            adapter.removeItem(position)
+        }
         recyclerView.adapter = adapter
-        recyclerView.recycledViewPool.clear()
-        adapter.notifyDataSetChanged()
+
+        loadProducts()
 
         scanDataReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -112,29 +102,38 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
         val idDocument = intent.getStringExtra("idDocument")?.toIntOrNull() ?: return
 
         try {
-            service.performDocumentElementsRequest(idDocument) { products ->
-                Log.d("ProductsActivity", "Loaded products: ${products.size}")
-
-                runOnUiThread {
-                    if (!isFinishing) {
-                        elements.clear()
-                        elements.addAll(products)
-                        baseList.addAll(products)
-
-                        recyclerView.recycledViewPool.clear()
-                        adapter.notifyDataSetChanged()
-                    }
-
-                    progressBar.visibility = View.GONE
-                }
-            }
 
             service.getStoreList { stores ->
-                if (stores.isNotEmpty()) {
-                    storeList = stores.toMutableList()
-                }
-                else {
-                    Log.d("Store Error", "storeTitles is empty")
+                storeList.clear()
+                storeList.addAll(stores)
+
+
+                service.performDocumentElementsRequest(idDocument) { products ->
+                    Log.d("ProductsActivity", "Loaded products: ${products.size}")
+
+                    runOnUiThread {
+                        if (!isFinishing) {
+                            elements.clear()
+                            elements.addAll(products)
+                            baseList.addAll(products)
+
+
+                            adapter = ProductMovingAdapter(
+                                this@ProductsDocumentMovingActivity,
+                                elements,
+                                storeList
+                            ) { position ->
+                                adapter.removeItem(position)
+                                deletedProduct.add(elements[position])
+                                elements.removeAt(position)
+                            }
+                            recyclerView.adapter = adapter
+
+                            recyclerView.recycledViewPool.clear()
+                            adapter.notifyDataSetChanged()
+                        }
+                        progressBar.visibility = View.GONE
+                    }
                 }
             }
 
@@ -180,8 +179,10 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                 if (response.isSuccessful) {
                     val productDetails = response.body()?.result?.get("product") as? LinkedTreeMap<*, *>
                     if (productDetails != null) {
-                        val elementMapper = DocumentElementMapper()
-                        val element = elementMapper.mapToDocumentElement(productDetails)
+                        val mapper = ProductToDocumentElementMapper()
+                        val productMapper = ProductMapper()
+                        val product = productMapper.mapToProduct(productDetails)
+                        val element = mapper.map(product, productId.toLong())
                         showAlertScanInfo(element, onAddProduct = {
                             addProductToList(element)
                         })
@@ -204,6 +205,7 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
     private fun addProductToList(element: DocumentElement) {
         if (!element.checkInList(elements)) {
             elements.add(0, element)
+            newProductInDocument.add(element)
             adapter.notifyDataSetChanged()
 
             recyclerView.recycledViewPool.clear()
@@ -233,15 +235,16 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
             }
         }
         return null
+
     }
 
 
     private fun showAlertScanInfo(element: DocumentElement, onAddProduct: () -> Unit) {
         val storeName = findNameOfStore(element.storeFrom)
-        if (storeName == null) {
-            showAlertInfo("Название склада null")
-            return
-        }
+//        if (storeName == null) {
+//            showAlertInfo("Название склада null")
+//            return
+//        }
         AlertDialog.Builder(this).apply {
             setTitle("Информация о товаре")
             setMessage("${element.name} \n${element.amount} \n$storeName")
@@ -255,6 +258,27 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
             }
         }.create().show()
     }
+
+    private fun areAllFieldsFilled(): Boolean {
+        return productList.all { product ->
+            (product.quantity ?: 0) > 0 &&
+                    !product.barcode.isNullOrEmpty()
+        }
+    }
+
+    fun updateSaveButtonState() {
+        val isAllFieldsFilled = areAllFieldsFilled()
+        btnSave?.isEnabled = isAllFieldsFilled
+        btnSave?.setBackgroundColor(
+            if (isAllFieldsFilled) {
+                ContextCompat.getColor(this, R.color.blue)
+            } else {
+                ContextCompat.getColor(this, R.color.gray)
+            }
+
+        )
+    }
+
 
 
     override fun onDestroy() {
