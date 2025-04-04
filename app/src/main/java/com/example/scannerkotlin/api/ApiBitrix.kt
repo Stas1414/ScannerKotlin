@@ -5,6 +5,7 @@ import com.example.scannerkotlin.request.BarcodeRequest
 import com.example.scannerkotlin.request.CatalogDocumentElementListRequest
 import com.example.scannerkotlin.request.CatalogDocumentListRequest
 import com.example.scannerkotlin.request.DeletedDocumentElementRequest
+import com.example.scannerkotlin.request.NewDocumentRequest
 import com.example.scannerkotlin.request.ProductIdRequest
 import com.example.scannerkotlin.request.ProductOfferRequest
 import com.example.scannerkotlin.request.ProductRequest
@@ -16,6 +17,7 @@ import com.example.scannerkotlin.response.CatalogDocumentListResponse
 import com.example.scannerkotlin.response.ProductBarcodeResponse
 import com.example.scannerkotlin.response.ProductOfferResponse
 import com.example.scannerkotlin.response.ProductResponse
+import com.example.scannerkotlin.response.UsersResponse
 import com.example.scannerkotlin.response.VariationsResponse
 import retrofit2.Call
 import retrofit2.http.Body
@@ -93,5 +95,13 @@ interface ApiBitrix {
 
     @GET("catalog.store.list")
     fun getStoreList():Call<HashMap<String, Any?>>
+
+    @POST("catalog.document.add")
+    fun addNewDocument(
+        @Body request: NewDocumentRequest
+    ) : Call<HashMap<String, Any?>>
+
+    @GET("user.search")
+    fun getUsers(): Call<UsersResponse>
 
 }
