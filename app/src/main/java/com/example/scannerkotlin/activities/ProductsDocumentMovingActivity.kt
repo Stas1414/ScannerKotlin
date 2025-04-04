@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -13,6 +14,7 @@ import android.widget.Button
 import android.widget.ListView
 import android.widget.ProgressBar
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -72,6 +74,7 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
 
 
 
+    @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("UnspecifiedRegisterReceiverFlag", "MissingInflatedId", "NotifyDataSetChanged")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,8 +97,9 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
 
             val removedItem = elements.removeAt(position)
             deletedProduct.add(removedItem)
-            adapter.updateData(elements)
+            adapter.updateData(ArrayList(elements))
             updateSaveButtonState()
+
         }
         recyclerView.adapter = adapter
 
@@ -134,6 +138,26 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                 }
             }
         }
+        btnSave?.setOnClickListener {
+            service.conductDocument(
+                baseList,
+                intent.getStringExtra("idDocument")?.toInt(),
+                deletedProducts = deletedProduct,
+                context = this,
+                updatedProducts = elements,
+                newElement = newProductInDocument,
+                onLoading = { isLoading ->
+                    progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+                },
+                callback = { success ->
+                    if (success) {
+                        Toast.makeText(this, "Документ успешно проведен", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this, "Ошибка при проведении документа", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+        }
     }
 
 
@@ -158,7 +182,7 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                             baseList.clear()
                             baseList.addAll(products)
 
-                            // Не создаем новый адаптер, а обновляем данные
+
                             adapter.notifyDataSetChanged()
                         }
                         progressBar.visibility = View.GONE
@@ -210,9 +234,14 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                         val productMapper = ProductMapper()
                         val product = productMapper.mapToProduct(productDetails)
                         val element = mapper.map(product, productId.toLong())
-                        showAlertScanInfo(element, onAddProduct = {
-                            addProductToList(element)
-                        })
+                        if (!elements.contains(element)) {
+                            showAlertScanInfo(element, onAddProduct = {
+                                addProductToList(element)
+                            })
+                        }
+                        else {
+                            showAlertInfo("Этот товар уже добавлен")
+                        }
                     } else {
                         Log.e("ScanActivity", "Product details are null")
 
@@ -292,7 +321,7 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
         val isAllFieldsFilled = areAllFieldsFilled(elements)
         btnSave?.isEnabled = isAllFieldsFilled
         btnSave?.setBackgroundColor(
-            if (isAllFieldsFilled) {
+            if (isAllFieldsFilled && elements.isNotEmpty()) {
                 ContextCompat.getColor(this, R.color.blue)
             } else {
                 ContextCompat.getColor(this, R.color.gray)

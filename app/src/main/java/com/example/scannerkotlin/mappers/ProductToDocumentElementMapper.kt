@@ -13,13 +13,14 @@ class ProductToDocumentElementMapper {
     ): DocumentElement {
         return DocumentElement(
             id = null,
-            amount = product.quantity?.toDouble(),
+            amount = null,
             docId = docId,
             elementId = product.id,
             purchasingPrice = 0.0,
             storeFrom = storeFrom,
             storeTo = storeTo,
-            name = product.name
+            name = product.name,
+            mainAmount = product.quantity?.toDouble()
         )
     }
 

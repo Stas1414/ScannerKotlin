@@ -79,7 +79,7 @@ class ProductMovingAdapter(
         }
 
 
-        val availableAmount = document.amount ?: 0.0
+        val availableAmount = document.mainAmount ?: 0.0
         holder.availableQuantity.text = "Доступно: $availableAmount"
 
         holder.etQuantity.removeTextChangedListener(holder.quantityTextWatcher)
@@ -142,6 +142,7 @@ class ProductMovingAdapter(
         documentList.addAll(newItems)
         notifyDataSetChanged()
     }
+
 
     inner class DocumentViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvProductName: TextView = view.findViewById(R.id.tvProductName)

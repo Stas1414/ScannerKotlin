@@ -14,7 +14,8 @@ class DocumentElementMapper {
             storeFrom = (map["storeFrom"] as? Double)?.toInt(),
             storeTo = (map["storeTo"] as? Double)?.toInt(),
             id = (map["id"] as? Double)?.toInt(),
-            name = null
+            name = null,
+            mainAmount = null
         )
     }
 }
