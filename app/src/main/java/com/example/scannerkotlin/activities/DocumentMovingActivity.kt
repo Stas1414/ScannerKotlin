@@ -5,13 +5,13 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
-import com.example.scannerkotlin.adapter.DocumentComingAdapter
 import com.example.scannerkotlin.adapter.DocumentMovingAdapter
 import com.example.scannerkotlin.decoration.SpaceItemDecoration
 import com.example.scannerkotlin.listener.OnItemClickListener
@@ -22,6 +22,7 @@ class DocumentMovingActivity : AppCompatActivity(), OnItemClickListener {
     private lateinit var adapter: DocumentMovingAdapter
     private var service: CatalogDocumentMovingService? = null
     private lateinit var progressBar: ProgressBar
+    private var btnAddDocument:Button? = null
 
     @SuppressLint("MissingInflatedId", "NotifyDataSetChanged")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,6 +31,25 @@ class DocumentMovingActivity : AppCompatActivity(), OnItemClickListener {
 
 
         progressBar = findViewById(R.id.progressBar)
+        btnAddDocument = findViewById(R.id.btnAddDocumentMoving)
+
+        btnAddDocument?.setOnClickListener {
+            val userId = intent.getStringExtra("userId")
+            Log.d("DocumentMovingActivity", "userId: $userId")
+            progressBar.visibility = View.VISIBLE
+
+            service?.addNewDocument(userId) { success ->
+                runOnUiThread {
+                    if (success) {
+                        Toast.makeText(this, "Документ успешно добавлен", Toast.LENGTH_SHORT).show()
+                        loadDocuments()
+                    } else {
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(this, "Ошибка при добавлении документа", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
 
         val recyclerView: RecyclerView = findViewById(R.id.documentMovingRecycleView)
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -42,15 +62,18 @@ class DocumentMovingActivity : AppCompatActivity(), OnItemClickListener {
         adapter = DocumentMovingAdapter(mutableListOf())
         recyclerView.adapter = adapter
 
+        loadDocuments()
+    }
+
+
+    @SuppressLint("NotifyDataSetChanged")
+    private fun loadDocuments() {
+        progressBar.visibility = View.VISIBLE
 
         service?.performDocumentListRequest(
             onComplete = { documents ->
                 runOnUiThread {
-                    Log.d("DocumentActivity", "Получено документов: ${documents.size}")
-
-
                     progressBar.visibility = View.GONE
-
                     adapter.updateData(documents)
                     adapter.notifyDataSetChanged()
                 }
@@ -65,9 +88,6 @@ class DocumentMovingActivity : AppCompatActivity(), OnItemClickListener {
                 progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
             }
         )
-
-
-        progressBar.visibility = View.VISIBLE
     }
 
     override fun onItemClick(title: String, idDocument: String) {
@@ -76,4 +96,5 @@ class DocumentMovingActivity : AppCompatActivity(), OnItemClickListener {
         intent.putExtra("idDocument", idDocument)
         startActivity(intent)
     }
+
 }

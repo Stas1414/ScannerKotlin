@@ -14,10 +14,10 @@ import com.google.android.material.textfield.TextInputLayout
 @Suppress("DEPRECATION")
 class AuthActivity : AppCompatActivity() {
 
-    private var userId: String? = null
+//    private var userId: String? = null
     private var userService: UserService? = null
     private var passwords: MutableList<String> = mutableListOf()
-    private val users: MutableMap<String, String> = mutableMapOf<String, String>()
+    private val users: MutableMap<String, String> = mutableMapOf()
     private lateinit var passwordEditText: TextInputEditText
     private lateinit var loginButton: MaterialButton
     private lateinit var inputLayout: TextInputLayout
@@ -33,9 +33,12 @@ class AuthActivity : AppCompatActivity() {
         loginButton = findViewById(R.id.loginButton)
         inputLayout = findViewById(R.id.passwordInputLayout)
 
+        setupLoginButton()
 
         userService?.getPasswords { passwordPairs ->
             passwordPairs?.forEach { (id, password) ->
+
+                Log.d("Entry", "Pass: $password, Id: $id")
                 passwords.add(password)
                 users[id] = password
             }
@@ -64,9 +67,11 @@ class AuthActivity : AppCompatActivity() {
             }
 
             if (passwords.contains(enteredPassword)) {
-                userId = users.entries.find { it.value == enteredPassword }?.key
+//                userId = users.entries.find { it.value == enteredPassword }?.key
                 val intent: Intent = Intent(this, MainActivity::class.java)
-                intent.putExtra("userId", userId)
+                intent.putExtra("userId", users.entries.find { it.value == enteredPassword }?.key)
+                Log.d("AuthActivity", "userId: ${intent.getStringExtra("userId")}")
+
                 startActivity(intent)
                 finish()
             } else {

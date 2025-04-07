@@ -2,6 +2,7 @@ package com.example.scannerkotlin.activities
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import com.example.scannerkotlin.R
@@ -47,6 +48,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun startDocumentMovingActivity() {
         val intent = Intent(this, DocumentMovingActivity::class.java)
+        intent.putExtra("userId", getIntent().getStringExtra("userId"))
+        Log.d("MainActivity", "userId: ${getIntent().getStringExtra("userId")}")
         startActivity(intent)
     }
 

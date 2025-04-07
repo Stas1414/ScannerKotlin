@@ -6,7 +6,6 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
-import com.example.scannerkotlin.activities.DocumentComingActivity
 import com.example.scannerkotlin.activities.DocumentMovingActivity
 import com.example.scannerkotlin.api.ApiBitrix
 import com.example.scannerkotlin.mappers.DocumentElementMapper
@@ -21,8 +20,8 @@ import com.example.scannerkotlin.request.AddDocumentElementRequest
 import com.example.scannerkotlin.request.CatalogDocumentElementListRequest
 import com.example.scannerkotlin.request.CatalogDocumentListRequest
 import com.example.scannerkotlin.request.DeletedDocumentElementRequest
+import com.example.scannerkotlin.request.NewDocumentRequest
 import com.example.scannerkotlin.request.ProductRequest
-import com.example.scannerkotlin.request.UpdateProductMeasureRequest
 import com.example.scannerkotlin.request.UpdatedDocumentElementsRequest
 import com.example.scannerkotlin.request.VariationsRequest
 import com.example.scannerkotlin.response.CatalogDocumentElementListResponse
@@ -613,5 +612,30 @@ class CatalogDocumentMovingService {
                 }
             }
         }
+    }
+
+
+    fun addNewDocument(userId: String?, callback: (Boolean) -> Unit) {
+        if (userId == null) {
+            callback(false)
+            return
+        }
+
+        val request = NewDocumentRequest(fields = mutableMapOf(
+            "docType" to "M",
+            "currency" to "BYN",
+            "responsibleId" to userId
+        ))
+
+        apiBitrix?.addNewDocument(request)?.enqueue(object : Callback<HashMap<String, Any?>> {
+            override fun onResponse(call: Call<HashMap<String, Any?>>, response: Response<HashMap<String, Any?>>) {
+                callback(response.isSuccessful)
+            }
+
+            override fun onFailure(call: Call<HashMap<String, Any?>>, t: Throwable) {
+                Log.d("Document Error", "Error: ${t.message}")
+                callback(false)
+            }
+        })
     }
 }
