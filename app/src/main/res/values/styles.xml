@@ -25,4 +25,10 @@
     <style name="DeleteButton" parent="TableButton">
         <item name="android:background">@drawable/btn_red</item>
     </style>
+
+    <style name="ErrorTextAppearance" parent="@style/TextAppearance.Design.Error">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/design_default_color_error</item>
+        <item name="android:paddingTop">4dp</item>
+    </style>
 </resources>

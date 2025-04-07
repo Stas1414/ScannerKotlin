@@ -1,8 +1,9 @@
 package com.example.scannerkotlin.service
 
+import android.util.Log
 import com.example.scannerkotlin.api.ApiBitrix
-import com.example.scannerkotlin.mappers.UserMapper
-import com.example.scannerkotlin.response.UserResponse
+import com.example.scannerkotlin.request.PasswordRequest
+import com.example.scannerkotlin.response.PasswordResponse
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -18,28 +19,38 @@ class UserService {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
     private val apiBitrix: ApiBitrix? = retrofit.create(ApiBitrix::class.java)
-    private val userMapper = UserMapper()
 
 
-    fun getUsers() {
-        val callUser: Call<UserResponse>? = apiBitrix?.getUsers()
-        callUser?.enqueue(object : Callback<UserResponse>{
+    fun getPasswords(onComplete: (List<Pair<String, String>>?) -> Unit) {
+        val request = PasswordRequest(iblockId = 18, iblockTypeId = "lists")
+        val callUser = apiBitrix?.getPasswords(request)
+
+        callUser?.enqueue(object : Callback<PasswordResponse> {
             override fun onResponse(
-                call: Call<UserResponse>,
-                response: Response<UserResponse>
+                call: Call<PasswordResponse>,
+                response: Response<PasswordResponse>
             ) {
                 if (response.isSuccessful) {
-                    val result = response.body()?.result ?: emptyList()
-                    val users = result.map { userData ->
-                        userMapper.fromJson(userData)
+                    val result = response.body()?.result?.mapNotNull { item ->
+                        val id = item.getId()
+                        val password = item.getPassword()
+                        if (id != null && password != null) {
+                            id to password
+                        } else {
+                            null
+                        }
                     }
+                    onComplete(result)
+                } else {
+                    Log.d("Password Request", "Unsuccessful response: ${response.code()}")
+                    onComplete(null)
                 }
             }
 
-            override fun onFailure(call: Call<UserResponse>, t: Throwable) {
-                TODO("Not yet implemented")
+            override fun onFailure(call: Call<PasswordResponse>, t: Throwable) {
+                Log.d("Password Request", "Password request Error", t)
+                onComplete(null)
             }
-
         })
     }
 }

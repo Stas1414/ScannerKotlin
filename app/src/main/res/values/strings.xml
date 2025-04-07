@@ -36,4 +36,5 @@
     <string name="quantity">Количество</string>
     <string name="barcode">Штрихкод</string>
     <string name="AddDocumentMoving">Добавить документ</string>
+    <string name="Auth">Авторизация</string>
 </resources>
