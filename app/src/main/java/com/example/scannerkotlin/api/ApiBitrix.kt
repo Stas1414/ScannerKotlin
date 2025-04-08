@@ -10,6 +10,7 @@ import com.example.scannerkotlin.request.PasswordRequest
 import com.example.scannerkotlin.request.ProductIdRequest
 import com.example.scannerkotlin.request.ProductOfferRequest
 import com.example.scannerkotlin.request.ProductRequest
+import com.example.scannerkotlin.request.StoreAmountRequest
 import com.example.scannerkotlin.request.UpdateProductMeasureRequest
 import com.example.scannerkotlin.request.UpdatedDocumentElementsRequest
 import com.example.scannerkotlin.request.VariationsRequest
@@ -19,6 +20,7 @@ import com.example.scannerkotlin.response.ProductBarcodeResponse
 import com.example.scannerkotlin.response.ProductOfferResponse
 import com.example.scannerkotlin.response.ProductResponse
 import com.example.scannerkotlin.response.PasswordResponse
+import com.example.scannerkotlin.response.StoreAmountResponse
 import com.example.scannerkotlin.response.VariationsResponse
 import retrofit2.Call
 import retrofit2.http.Body
@@ -106,5 +108,10 @@ interface ApiBitrix {
     fun getPasswords(
         @Body request: PasswordRequest
     ): Call<PasswordResponse>
+
+    @POST("catalog.storeproduct.list")
+    fun getStoreAmount(
+        @Body request:StoreAmountRequest
+    ) : Call<StoreAmountResponse>
 
 }

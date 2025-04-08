@@ -22,12 +22,14 @@ import com.example.scannerkotlin.request.CatalogDocumentListRequest
 import com.example.scannerkotlin.request.DeletedDocumentElementRequest
 import com.example.scannerkotlin.request.NewDocumentRequest
 import com.example.scannerkotlin.request.ProductRequest
+import com.example.scannerkotlin.request.StoreAmountRequest
 import com.example.scannerkotlin.request.UpdatedDocumentElementsRequest
 import com.example.scannerkotlin.request.VariationsRequest
 import com.example.scannerkotlin.response.CatalogDocumentElementListResponse
 import com.example.scannerkotlin.response.CatalogDocumentListResponse
 import com.example.scannerkotlin.response.ErrorResponse
 import com.example.scannerkotlin.response.ProductResponse
+import com.example.scannerkotlin.response.StoreAmountResponse
 import com.example.scannerkotlin.response.VariationsResponse
 import com.google.gson.Gson
 import com.google.gson.internal.LinkedTreeMap
@@ -635,6 +637,39 @@ class CatalogDocumentMovingService {
             override fun onFailure(call: Call<HashMap<String, Any?>>, t: Throwable) {
                 Log.d("Document Error", "Error: ${t.message}")
                 callback(false)
+            }
+        })
+    }
+
+    fun getStoreAmount(storeId: Int, productId: Int?, onComplete: (Double?) -> Unit) {
+        val request = StoreAmountRequest(
+            filter = mutableMapOf(
+                "storeId" to storeId,
+                "productId" to productId
+            )
+        )
+        val call = apiBitrix?.getStoreAmount(request)
+        call?.enqueue(object : Callback<StoreAmountResponse> {
+            override fun onResponse(
+                call: Call<StoreAmountResponse>,
+                response: Response<StoreAmountResponse>
+            ) {
+                if (response.isSuccessful) {
+                    val storeProducts = response.body()?.result?.storeProducts
+                    val amount = storeProducts?.firstOrNull()?.amount
+                    if (amount != null && amount != 0.0) {
+                        onComplete(amount)
+                    } else {
+                        onComplete(null)
+                    }
+                } else {
+                    onComplete(null)
+                }
+            }
+
+            override fun onFailure(call: Call<StoreAmountResponse>, t: Throwable) {
+                Log.d("StoreAmount", "StoreAmount Error", t)
+                onComplete(null)
             }
         })
     }
