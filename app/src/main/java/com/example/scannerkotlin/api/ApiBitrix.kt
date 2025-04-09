@@ -1,27 +1,7 @@
 package com.example.scannerkotlin.api
 
-import com.example.scannerkotlin.request.AddDocumentElementRequest
-import com.example.scannerkotlin.request.BarcodeRequest
-import com.example.scannerkotlin.request.CatalogDocumentElementListRequest
-import com.example.scannerkotlin.request.CatalogDocumentListRequest
-import com.example.scannerkotlin.request.DeletedDocumentElementRequest
-import com.example.scannerkotlin.request.NewDocumentRequest
-import com.example.scannerkotlin.request.PasswordRequest
-import com.example.scannerkotlin.request.ProductIdRequest
-import com.example.scannerkotlin.request.ProductOfferRequest
-import com.example.scannerkotlin.request.ProductRequest
-import com.example.scannerkotlin.request.StoreAmountRequest
-import com.example.scannerkotlin.request.UpdateProductMeasureRequest
-import com.example.scannerkotlin.request.UpdatedDocumentElementsRequest
-import com.example.scannerkotlin.request.VariationsRequest
-import com.example.scannerkotlin.response.CatalogDocumentElementListResponse
-import com.example.scannerkotlin.response.CatalogDocumentListResponse
-import com.example.scannerkotlin.response.ProductBarcodeResponse
-import com.example.scannerkotlin.response.ProductOfferResponse
-import com.example.scannerkotlin.response.ProductResponse
-import com.example.scannerkotlin.response.PasswordResponse
-import com.example.scannerkotlin.response.StoreAmountResponse
-import com.example.scannerkotlin.response.VariationsResponse
+import com.example.scannerkotlin.request.*
+import com.example.scannerkotlin.response.*
 import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -31,9 +11,7 @@ import retrofit2.http.Query
 interface ApiBitrix {
 
     @POST("catalog.document.list")
-    fun getDocumentList(
-        @Body list: CatalogDocumentListRequest
-    ) : Call<CatalogDocumentListResponse>
+    suspend fun getDocumentListSuspend(@Body request: CatalogDocumentListRequest): CatalogDocumentListResponse
 
     @POST("catalog.document.element.list")
     fun getDocumentProducts(
@@ -111,5 +89,4 @@ interface ApiBitrix {
     fun getStoreAmount(
         @Body request:StoreAmountRequest
     ) : Call<StoreAmountResponse>
-
 }

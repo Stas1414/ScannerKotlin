@@ -26,8 +26,7 @@ class UserService {
         return try {
             withContext(Dispatchers.IO) {
                 val request = PasswordRequest(iblockId = 18, iblockTypeId = "lists")
-                val response = apiBitrix.getPasswords(request).execute() // Используем execute() для синхронного вызова
-
+                val response = apiBitrix.getPasswords(request).execute()
                 processResponse(response)
             }
         } catch (e: HttpException) {

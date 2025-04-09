@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import com.example.scannerkotlin.activities.DocumentComingActivity
+import com.example.scannerkotlin.activities.MainActivity
 import com.example.scannerkotlin.api.ApiBitrix
 import com.example.scannerkotlin.mappers.DocumentElementMapper
 import com.example.scannerkotlin.mappers.DocumentMapper
@@ -40,6 +41,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.Call
 import retrofit2.Callback
+import retrofit2.HttpException
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.awaitResponse
@@ -303,7 +305,7 @@ class CatalogDocumentComingService {
                 withContext(Dispatchers.Main) {
                     conductDoc(idDocument, context, onLoading) { conductSuccess ->
                         if (conductSuccess) {
-                            val intent = Intent(context, DocumentComingActivity::class.java)
+                            val intent = Intent(context, MainActivity::class.java)
                             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                             context.startActivity(intent)
                         } else {
@@ -458,12 +460,8 @@ class CatalogDocumentComingService {
     }
 
 
-    fun performDocumentListRequest(
-        onComplete: (List<Document>) -> Unit,
-        onError: (String) -> Unit,
-        onLoading: (Boolean) -> Unit
-    ) {
-        val documentsList = mutableListOf<Document>()
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun getDocumentsSuspend(): List<Document> {
         val requestWithParams = CatalogDocumentListRequest(
             filter = mutableMapOf(
                 "status" to "N",
@@ -471,63 +469,34 @@ class CatalogDocumentComingService {
             )
         )
 
+        return try {
+            val result = withContext(Dispatchers.IO) {
+                apiBitrix?.getDocumentListSuspend(requestWithParams)
+                    ?: throw IllegalStateException("API not initialized")
+            }
 
-        onLoading(true)
+            val rawDocuments = result.result["documents"] as? List<*>
+                ?: throw IllegalStateException("Invalid documents format")
 
-        val callDocumentList: Call<CatalogDocumentListResponse>? = apiBitrix?.getDocumentList(requestWithParams)
-        callDocumentList?.enqueue(object : Callback<CatalogDocumentListResponse> {
-            @RequiresApi(Build.VERSION_CODES.O)
-            override fun onResponse(
-                call: Call<CatalogDocumentListResponse>,
-                response: Response<CatalogDocumentListResponse>
-            ) {
-
-                onLoading(false)
-
-                if (response.isSuccessful) {
-                    val result = response.body() ?: run {
-                        onError("Empty response body")
-                        return
-                    }
-
-                    val rawDocuments = result.result["documents"] as? List<*>
-                        ?: run {
-                            onError("Invalid documents format")
-                            return
-                        }
-
-                    documentsList.clear()
-                    val mappedDocuments = rawDocuments.mapNotNull { documentMap ->
-                        try {
-                            documentMapper.mapToDocument(documentMap as LinkedTreeMap<*, *>)
-                        } catch (e: Exception) {
-                            Log.e("DocumentMapping", "Error mapping document: ${e.message}")
-                            null
-                        }
-                    }
-
-                    documentsList.addAll(mappedDocuments)
-                    Log.d("DocumentLoad", "Loaded ${mappedDocuments.size} documents")
-                    onComplete(mappedDocuments)
-
-                } else {
-                    val errorMessage = "HTTP error: ${response.code()} - ${response.message()}"
-                    Log.e("NetworkError", errorMessage)
-                    onError(errorMessage)
+            rawDocuments.mapNotNull { documentMap ->
+                try {
+                    documentMapper.mapToDocument(documentMap as LinkedTreeMap<*, *>)
+                } catch (e: Exception) {
+                    Log.e("DocumentMapping", "Error mapping document: ${e.message}")
+                    null
                 }
+            }.also { mappedDocuments ->
+                Log.d("DocumentLoad", "Loaded ${mappedDocuments.size} documents")
             }
 
-            override fun onFailure(call: Call<CatalogDocumentListResponse>, t: Throwable) {
-
-                onLoading(false)
-
-                val errorMessage = "Network failure: ${t.localizedMessage}"
-                Log.e("NetworkError", errorMessage, t)
-                onError(errorMessage)
-            }
-        })
+        } catch (e: HttpException) {
+            Log.e("NetworkError", "HTTP error: ${e.code()} - ${e.message()}", e)
+            throw Exception("HTTP error: ${e.code()} - ${e.message()}")
+        } catch (e: Exception) {
+            Log.e("NetworkError", "Failed to load documents", e)
+            throw Exception("Network failure: ${e.localizedMessage}")
+        }
     }
-
 
     fun performDocumentElementsRequest(
         idDocument: Int,

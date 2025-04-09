@@ -2,13 +2,16 @@ package com.example.scannerkotlin.activities
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
@@ -16,6 +19,9 @@ import com.example.scannerkotlin.adapter.DocumentMovingAdapter
 import com.example.scannerkotlin.decoration.SpaceItemDecoration
 import com.example.scannerkotlin.listener.OnItemClickListener
 import com.example.scannerkotlin.service.CatalogDocumentMovingService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class DocumentMovingActivity : AppCompatActivity(), OnItemClickListener {
 
@@ -24,6 +30,7 @@ class DocumentMovingActivity : AppCompatActivity(), OnItemClickListener {
     private lateinit var progressBar: ProgressBar
     private var btnAddDocument:Button? = null
 
+    @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("MissingInflatedId", "NotifyDataSetChanged")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,28 +73,29 @@ class DocumentMovingActivity : AppCompatActivity(), OnItemClickListener {
     }
 
 
+    @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("NotifyDataSetChanged")
     private fun loadDocuments() {
         progressBar.visibility = View.VISIBLE
 
-        service?.performDocumentListRequest(
-            onComplete = { documents ->
-                runOnUiThread {
-                    progressBar.visibility = View.GONE
-                    adapter.updateData(documents)
-                    adapter.notifyDataSetChanged()
+
+        lifecycleScope.launch {
+            try {
+                val documents = withContext(Dispatchers.IO) {
+                    service?.getDocumentsSuspend() ?: emptyList()
                 }
-            },
-            onError = { errorMessage ->
-                runOnUiThread {
-                    progressBar.visibility = View.GONE
-                    Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
-                }
-            },
-            onLoading = { isLoading ->
-                progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+
+                progressBar.visibility = View.GONE
+                adapter.updateData(documents)
+                adapter.notifyDataSetChanged()
+            } catch (e: Exception) {
+                progressBar.visibility = View.GONE
+                Toast.makeText(this@DocumentMovingActivity,
+                    "Error loading documents: ${e.message}",
+                    Toast.LENGTH_SHORT).show()
+                Log.e("DocumentLoad", "Failed to load documents", e)
             }
-        )
+        }
     }
 
     override fun onItemClick(title: String, idDocument: String) {
