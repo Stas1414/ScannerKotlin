@@ -251,14 +251,6 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                             }
                         )
 
-//                           val element = mapper.map(product, intent.getStringExtra("idDocument")?.toLong())
-//                           if (!elements.contains(element)) {
-//                               showAlertScanInfo(element, onAddProduct = {
-//                                   addProductToList(element)
-//                               })
-//                           } else {
-//                               showAlertInfo("Этот товар уже добавлен")
-//                           }
                     } else {
                         Log.e("ScanActivity", "Product details are null")
 
@@ -299,17 +291,6 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
         }.create().show()
     }
 
-    private fun findNameOfStore(idStore: Int?): String?{
-        if (idStore != null) {
-            for (store in storeList) {
-                if (idStore == store.id) {
-                    return store.title
-                }
-            }
-        }
-        return null
-
-    }
 
 
     private fun showAlertScanInfo(
@@ -343,7 +324,7 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
 
     private fun areAllFieldsFilled(elements: List<DocumentElement>): Boolean {
         return elements.all { product ->
-            (product.amount ?: 0.0) > 0 && product.storeFrom != null && product.storeTo != null && product.storeFrom != product.storeTo
+            (product.amount ?: 0) > 0 && product.storeFrom != null && product.storeTo != null && product.storeFrom != product.storeTo
         }
     }
 

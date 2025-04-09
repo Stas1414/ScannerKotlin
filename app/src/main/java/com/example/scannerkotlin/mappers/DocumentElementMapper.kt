@@ -7,7 +7,7 @@ class DocumentElementMapper {
 
     fun mapToDocumentElement(map: LinkedTreeMap<*, *>): DocumentElement {
         return DocumentElement(
-            amount = (map["amount"] as? Double),
+            amount = (map["amount"] as? Double)?.toInt(),
             docId = (map["docId"] as? Double)?.toLong(),
             elementId = (map["elementId"] as? Double)?.toInt(),
             purchasingPrice = (map["purchasingPrice"] as? Double),

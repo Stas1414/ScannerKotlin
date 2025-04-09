@@ -9,7 +9,6 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
-import com.example.scannerkotlin.activities.ProductsDocumentComingActivity
 import com.example.scannerkotlin.activities.ProductsDocumentMovingActivity
 import com.example.scannerkotlin.model.Document
 

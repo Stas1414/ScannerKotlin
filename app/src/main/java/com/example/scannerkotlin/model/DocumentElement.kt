@@ -2,7 +2,7 @@ package com.example.scannerkotlin.model
 
 data class DocumentElement(
     var id: Int?,
-    var amount: Double?,
+    var amount: Int?,
     val docId: Long?,
     val elementId: Int?,
     val purchasingPrice: Double?,

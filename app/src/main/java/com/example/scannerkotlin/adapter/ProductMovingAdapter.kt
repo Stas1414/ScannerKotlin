@@ -85,7 +85,7 @@ class ProductMovingAdapter(
 
                         document.amount?.let { currentAmount ->
                             if (currentAmount > availableAmount) {
-                                document.amount = availableAmount
+                                document.amount = availableAmount.toInt()
                                 holder.etQuantity.setText(availableAmount.toString())
                             }
                         }
@@ -112,7 +112,7 @@ class ProductMovingAdapter(
 
         holder.etQuantity.removeTextChangedListener(holder.quantityTextWatcher)
 
-        holder.etQuantity.setText(document.amount?.takeIf { it != 0.0 }?.toString() ?: "")
+        holder.etQuantity.setText(document.amount?.takeIf { it != 0 }?.toString() ?: "")
 
         holder.quantityTextWatcher = object : TextWatcher {
             private var lastValidValue = document.amount?.toString() ?: ""
@@ -143,15 +143,16 @@ class ProductMovingAdapter(
                     val value = input.toDouble()
                     val availableAmount = document.mainAmount ?: 0.0
 
-                    if (value > availableAmount && availableAmount > 0) {
+
+                    if ((value > availableAmount && availableAmount > 0) || (availableAmount == 0.0 && value > 0)) {
                         isSelfUpdate = true
-                        val correctedValue = availableAmount
+                        val correctedValue = if (availableAmount == 0.0) 0.0 else availableAmount
                         holder.etQuantity.setText(correctedValue.toString())
                         holder.etQuantity.setSelection(holder.etQuantity.text.length)
-                        document.amount = correctedValue
+                        document.amount = correctedValue.toInt()
                         lastValidValue = correctedValue.toString()
                     } else {
-                        document.amount = value
+                        document.amount = value.toInt()
                         lastValidValue = input
                     }
                 } catch (e: NumberFormatException) {
