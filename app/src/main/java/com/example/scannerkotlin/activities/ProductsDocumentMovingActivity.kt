@@ -30,8 +30,10 @@ import com.example.scannerkotlin.model.DocumentElement
 import com.example.scannerkotlin.model.Product
 import com.example.scannerkotlin.model.Store
 import com.example.scannerkotlin.request.ProductIdRequest
+import com.example.scannerkotlin.request.StoreAmountRequest
 import com.example.scannerkotlin.response.ProductBarcodeResponse
 import com.example.scannerkotlin.response.ProductResponse
+import com.example.scannerkotlin.response.StoreAmountResponse
 import com.example.scannerkotlin.service.CatalogDocumentMovingService
 import com.google.gson.internal.LinkedTreeMap
 import retrofit2.Call
@@ -233,15 +235,30 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                     if (productDetails != null) {
                         val productMapper = ProductMapper()
                         val product = productMapper.mapToProduct(productDetails)
-                        val element = mapper.map(product, productId.toLong())
-                        if (!elements.contains(element)) {
-                            showAlertScanInfo(element, onAddProduct = {
-                                addProductToList(element)
-                            })
-                        }
-                        else {
-                            showAlertInfo("Этот товар уже добавлен")
-                        }
+
+                        service.getStoreForScan(
+                            productId = productId.toInt(),
+                            onComplete = { storeProducts ->
+
+                                val element = mapper.map(product, intent.getStringExtra("idDocument")?.toLong())
+                                if (!elements.contains(element)) {
+                                    showAlertScanInfo(element, storeProducts, onAddProduct = {
+                                        addProductToList(element)
+                                    })
+                                } else {
+                                    showAlertInfo("Этот товар уже добавлен")
+                                }
+                            }
+                        )
+
+//                           val element = mapper.map(product, intent.getStringExtra("idDocument")?.toLong())
+//                           if (!elements.contains(element)) {
+//                               showAlertScanInfo(element, onAddProduct = {
+//                                   addProductToList(element)
+//                               })
+//                           } else {
+//                               showAlertInfo("Этот товар уже добавлен")
+//                           }
                     } else {
                         Log.e("ScanActivity", "Product details are null")
 
@@ -295,11 +312,24 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
     }
 
 
-    private fun showAlertScanInfo(element: DocumentElement, onAddProduct: () -> Unit) {
-        val storeName = findNameOfStore(element.storeFrom)
+    private fun showAlertScanInfo(
+        element: DocumentElement,
+        storeAmounts: List<StoreAmountResponse.StoreProduct>?,
+        onAddProduct: () -> Unit
+    ) {
+        val message = buildString {
+            append("${element.name}\n")
+            append("Остатки на складах:\n")
+            storeAmounts?.forEach { storeProduct ->
+                val store = storeList.find { it.id == storeProduct.storeId.toInt() }
+                val storeName = store?.title ?: "Неизвестный склад"
+                append("$storeName: ${storeProduct.amount}\n")
+            }
+        }
+
         AlertDialog.Builder(this).apply {
             setTitle("Подтверждение товара")
-            setMessage("${element.name} \n${element.amount} \n$storeName")
+            setMessage(message)
             setCancelable(false)
             setPositiveButton("Добавить товар") { dialog, _ ->
                 onAddProduct()

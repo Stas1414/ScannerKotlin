@@ -641,13 +641,19 @@ class CatalogDocumentMovingService {
         })
     }
 
-    fun getStoreAmount(storeId: Int, productId: Int?, onComplete: (Double?) -> Unit) {
+    fun getStoreAmount(storeId: Int?, productId: Int?, onAmount: (Double?) -> Unit?) {
         val request = StoreAmountRequest(
-            filter = mutableMapOf(
-                "storeId" to storeId,
-                "productId" to productId
-            )
+            filter = when {
+                storeId != null && productId != null -> mutableMapOf(
+                    "storeId" to storeId,
+                    "productId" to productId
+                )
+                storeId != null -> mutableMapOf("storeId" to storeId)
+                productId != null -> mutableMapOf("productId" to productId)
+                else -> null
+            }
         )
+
         val call = apiBitrix?.getStoreAmount(request)
         call?.enqueue(object : Callback<StoreAmountResponse> {
             override fun onResponse(
@@ -657,20 +663,41 @@ class CatalogDocumentMovingService {
                 if (response.isSuccessful) {
                     val storeProducts = response.body()?.result?.storeProducts
                     val amount = storeProducts?.firstOrNull()?.amount
-                    if (amount != null && amount != 0.0) {
-                        onComplete(amount)
-                    } else {
-                        onComplete(null)
-                    }
+                    onAmount(amount?.takeIf { it != 0.0 })
                 } else {
-                    onComplete(null)
+                    onAmount(null)
                 }
             }
 
             override fun onFailure(call: Call<StoreAmountResponse>, t: Throwable) {
                 Log.d("StoreAmount", "StoreAmount Error", t)
-                onComplete(null)
+                onAmount(null)
             }
+        })
+    }
+
+    fun getStoreForScan(productId: Int, onComplete: (List<StoreAmountResponse.StoreProduct>?) -> Unit) {
+        val request = StoreAmountRequest(
+            select = mutableListOf("amount", "storeId"),
+            filter = mutableMapOf(
+                "productId" to productId
+            )
+        )
+        apiBitrix?.getStoreAmount(request)?.enqueue(object : Callback<StoreAmountResponse> {
+            override fun onResponse(
+                call: Call<StoreAmountResponse>,
+                response: Response<StoreAmountResponse>
+            ) {
+                if (response.isSuccessful) {
+                    val storeProducts = response.body()?.result?.storeProducts
+                    onComplete(storeProducts)
+                }
+            }
+
+            override fun onFailure(call: Call<StoreAmountResponse>, t: Throwable) {
+                onComplete(emptyList())
+            }
+
         })
     }
 }

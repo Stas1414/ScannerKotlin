@@ -12,6 +12,9 @@ data class StoreAmountResponse(
 
     data class StoreProduct(
         @field:SerializedName("amount")
-        val amount: Double
+        val amount: Double,
+
+        @field:SerializedName("storeId")
+        val storeId: Double
     )
 }

@@ -3,85 +3,131 @@ package com.example.scannerkotlin.activities
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.example.scannerkotlin.R
 import com.example.scannerkotlin.service.UserService
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-@Suppress("DEPRECATION")
 class AuthActivity : AppCompatActivity() {
 
-//    private var userId: String? = null
     private var userService: UserService? = null
-    private var passwords: MutableList<String> = mutableListOf()
+    private val passwords: MutableList<String> = mutableListOf()
     private val users: MutableMap<String, String> = mutableMapOf()
-    private lateinit var passwordEditText: TextInputEditText
-    private lateinit var loginButton: MaterialButton
-    private lateinit var inputLayout: TextInputLayout
+    private val enteredPassword = StringBuilder()
+    private lateinit var dotViews: List<ImageView>
+    private val authScope = CoroutineScope(Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_auth)
 
         userService = UserService()
+        dotViews = listOf(
+            findViewById(R.id.dot1),
+            findViewById(R.id.dot2),
+            findViewById(R.id.dot3),
+            findViewById(R.id.dot4)
+        )
 
+        setupKeypadButtons()
+        loadPasswords()
+    }
 
-        passwordEditText = findViewById(R.id.passwordEditText)
-        loginButton = findViewById(R.id.loginButton)
-        inputLayout = findViewById(R.id.passwordInputLayout)
+    private fun loadPasswords() {
+        authScope.launch {
+            try {
+                val passwordPairs = withContext(Dispatchers.IO) {
+                    userService?.getPasswords()
+                }
 
-        setupLoginButton()
-
-        userService?.getPasswords { passwordPairs ->
-            passwordPairs?.forEach { (id, password) ->
-
-                Log.d("Entry", "Pass: $password, Id: $id")
-                passwords.add(password)
-                users[id] = password
+                passwordPairs?.forEach { (id, password) ->
+                    Log.d("Entry", "Pass: $password, Id: $id")
+                    passwords.add(password)
+                    users[id] = password
+                }
+            } catch (e: Exception) {
+                Log.e("AuthActivity", "Error loading passwords", e)
+                Toast.makeText(this@AuthActivity, "Ошибка загрузки паролей", Toast.LENGTH_SHORT).show()
             }
-        }
-
-        passwordEditText.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
-                inputLayout.error = null
-                inputLayout.isPasswordVisibilityToggleEnabled = true
-            }
-        }
-
-        passwordEditText.setOnClickListener {
-            inputLayout.error = null
-            inputLayout.isPasswordVisibilityToggleEnabled = true
         }
     }
 
-    private fun setupLoginButton() {
-        loginButton.setOnClickListener {
-            val enteredPassword = passwordEditText.text.toString().trim()
+    private fun setupKeypadButtons() {
+        val buttons = listOf(
+            findViewById(R.id.btn1),
+            findViewById(R.id.btn2),
+            findViewById(R.id.btn3),
+            findViewById(R.id.btn4),
+            findViewById(R.id.btn5),
+            findViewById(R.id.btn6),
+            findViewById(R.id.btn7),
+            findViewById(R.id.btn8),
+            findViewById(R.id.btn9),
+            findViewById<MaterialButton>(R.id.btn0)
+        )
 
-            if (enteredPassword.isEmpty()) {
-                showError("Введите пароль")
-                return@setOnClickListener
+        buttons.forEach { button ->
+            button.setOnClickListener {
+                if (enteredPassword.length < 4) {
+                    enteredPassword.append(button.text)
+                    updatePasswordDots()
+
+                    if (enteredPassword.length == 4) {
+                        checkPassword()
+                    }
+                }
             }
+        }
 
-            if (passwords.contains(enteredPassword)) {
-//                userId = users.entries.find { it.value == enteredPassword }?.key
-                val intent: Intent = Intent(this, MainActivity::class.java)
-                intent.putExtra("userId", users.entries.find { it.value == enteredPassword }?.key)
-                Log.d("AuthActivity", "userId: ${intent.getStringExtra("userId")}")
+        findViewById<MaterialButton>(R.id.btnDelete).setOnClickListener {
+            if (enteredPassword.isNotEmpty()) {
+                enteredPassword.deleteCharAt(enteredPassword.length - 1)
+                updatePasswordDots()
+            }
+        }
+    }
 
-                startActivity(intent)
-                finish()
+    private fun updatePasswordDots() {
+        dotViews.forEachIndexed { index, imageView ->
+            if (index < enteredPassword.length) {
+                imageView.setImageResource(R.drawable.circle_filled)
+                imageView.imageTintList = ContextCompat.getColorStateList(this, R.color.black)
             } else {
-                showError("Неверный пароль")
+                imageView.setImageResource(R.drawable.circle_outline)
+                imageView.imageTintList = ContextCompat.getColorStateList(this, R.color.black)
             }
         }
     }
 
-    private fun showError(message: String) {
-        inputLayout.error = message
-        passwordEditText.requestFocus()
+    private fun checkPassword() {
+        val password = enteredPassword.toString()
+
+        if (passwords.contains(password)) {
+            val userId = users.entries.find { it.value == password }?.key
+            val intent = Intent(this, MainActivity::class.java).apply {
+                putExtra("userId", userId)
+            }
+            Log.d("AuthActivity", "userId: $userId")
+
+            startActivity(intent)
+            finish()
+        } else {
+            Toast.makeText(this, "Неверный пароль", Toast.LENGTH_SHORT).show()
+            enteredPassword.clear()
+            updatePasswordDots()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        authScope.cancel()
     }
 }

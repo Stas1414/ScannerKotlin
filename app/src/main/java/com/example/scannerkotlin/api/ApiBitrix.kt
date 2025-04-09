@@ -105,9 +105,7 @@ interface ApiBitrix {
     ) : Call<HashMap<String, Any?>>
 
     @POST("lists.element.get")
-    fun getPasswords(
-        @Body request: PasswordRequest
-    ): Call<PasswordResponse>
+    fun getPasswords(@Body request: PasswordRequest): Call<PasswordResponse>
 
     @POST("catalog.storeproduct.list")
     fun getStoreAmount(
