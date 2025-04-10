@@ -2,7 +2,8 @@ package com.example.scannerkotlin.api
 
 import com.example.scannerkotlin.request.*
 import com.example.scannerkotlin.response.*
-import retrofit2.Call
+import retrofit2.Call // Убираем импорт Call
+import retrofit2.Response // Используем Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -11,82 +12,84 @@ import retrofit2.http.Query
 interface ApiBitrix {
 
     @POST("catalog.document.list")
-    suspend fun getDocumentListSuspend(@Body request: CatalogDocumentListRequest): CatalogDocumentListResponse
+    suspend fun getDocumentListSuspend(@Body request: CatalogDocumentListRequest): Response<CatalogDocumentListResponse>
 
     @POST("catalog.document.element.list")
-    fun getDocumentProducts(
+    suspend fun getDocumentProducts(
         @Body list: CatalogDocumentElementListRequest
-    ): Call<CatalogDocumentElementListResponse>
+    ): Response<CatalogDocumentElementListResponse>
 
     @POST("catalog.product.offer.add")
-    fun addVariationsOfProduct(
+    suspend fun addVariationsOfProduct(
         @Body request: ProductOfferRequest
-    ): Call<ProductOfferResponse>
+    ): Response<ProductOfferResponse>
 
     @POST("catalog.product.offer.list")
-    fun getVariations(
+    suspend fun getVariations(
         @Body request: VariationsRequest
-    ): Call<VariationsResponse>
+    ): Response<VariationsResponse>
 
     @POST("catalog.product.list")
-    fun getProducts (
+    suspend fun getProducts (
         @Body request: ProductRequest
-    ): Call<ProductResponse>
+    ): Response<ProductResponse>
 
 
     @GET("barcode.getproductid.json")
-    fun getProductIdByBarcode(
+    suspend fun getProductIdByBarcode(
         @Query("barcode") barcode: String
-    ): Call<ProductBarcodeResponse>
+    ): Response<ProductBarcodeResponse>
 
     @POST("barcode.setbyproductid.json")
-    fun setBarcodeByProductId(
+    suspend fun setBarcodeByProductId(
         @Body request: BarcodeRequest
-    ): Call<HashMap<String, Any?>>
+    ): Response<HashMap<String, Any?>>
+
 
     @POST("catalog.product.get")
-    fun getProductById(
-        @Body productRequest: ProductIdRequest
-    ) : Call<ProductResponse>
+    suspend fun getProductById(
+        @Body request: ProductIdRequest
+    ): Response<ProductResponse>
 
     @GET("catalog.document.conduct")
-    fun conductDocument(
+    suspend fun conductDocument(
         @Query("id") id: Int
-    ) : Call<HashMap<String, Any?>>
+    ) : Response<HashMap<String, Any?>>
 
     @POST("catalog.document.element.update")
-    fun updateDocumentElement(
+    suspend fun updateDocumentElement(
         @Body request: UpdatedDocumentElementsRequest
-    ) : Call<HashMap<String, Any?>>
+    ) : Response<HashMap<String, Any?>>
 
     @POST("catalog.document.element.delete")
-    fun deleteDocumentElement(
+    suspend fun deleteDocumentElement(
         @Body request: DeletedDocumentElementRequest
-    ) : Call<HashMap<String, Any?>>
+    ) : Response<HashMap<String, Any?>>
 
     @POST("catalog.product.update")
-    fun updateProductMeasure(
+    suspend fun updateProductMeasure(
         @Body request: UpdateProductMeasureRequest
-    ) : Call<HashMap<String, Any?>>
+    ) : Response<HashMap<String, Any?>>
 
     @POST("catalog.document.element.add")
-    fun addDocumentElement(
+    suspend fun addDocumentElement(
         @Body request: AddDocumentElementRequest
-    ) : Call<HashMap<String, Any?>>
+    ) : Response<HashMap<String, Any?>>
 
     @GET("catalog.store.list")
-    fun getStoreList():Call<HashMap<String, Any?>>
+    suspend fun getStoreList(): Response<HashMap<String, Any?>>
 
     @POST("catalog.document.add")
-    fun addNewDocument(
+    suspend fun addNewDocument(
         @Body request: NewDocumentRequest
-    ) : Call<HashMap<String, Any?>>
+    ) : Response<HashMap<String, Any?>>
 
     @POST("lists.element.get")
     fun getPasswords(@Body request: PasswordRequest): Call<PasswordResponse>
 
+
     @POST("catalog.storeproduct.list")
-    fun getStoreAmount(
-        @Body request:StoreAmountRequest
-    ) : Call<StoreAmountResponse>
+    suspend fun getStoreAmount(
+        @Body request: StoreAmountRequest
+    ): Response<StoreAmountResponse>
 }

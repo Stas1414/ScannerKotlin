@@ -1,5 +1,6 @@
 package com.example.scannerkotlin.activities
 
+
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -7,378 +8,625 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
+import android.os.Looper
 import android.util.Log
 import android.view.View
-import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.ListView
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
 import com.example.scannerkotlin.adapter.ProductMovingAdapter
 import com.example.scannerkotlin.api.ApiBitrix
-import com.example.scannerkotlin.mappers.DocumentElementMapper
 import com.example.scannerkotlin.mappers.ProductMapper
 import com.example.scannerkotlin.mappers.ProductToDocumentElementMapper
 import com.example.scannerkotlin.model.DocumentElement
 import com.example.scannerkotlin.model.Product
 import com.example.scannerkotlin.model.Store
 import com.example.scannerkotlin.request.ProductIdRequest
-import com.example.scannerkotlin.request.StoreAmountRequest
-import com.example.scannerkotlin.response.ProductBarcodeResponse
-import com.example.scannerkotlin.response.ProductResponse
 import com.example.scannerkotlin.response.StoreAmountResponse
 import com.example.scannerkotlin.service.CatalogDocumentMovingService
 import com.google.gson.internal.LinkedTreeMap
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.io.IOException
 
+@RequiresApi(Build.VERSION_CODES.O) 
 class ProductsDocumentMovingActivity : AppCompatActivity() {
 
-    private var btnAdd: Button? = null
-    private var btnSave: Button? = null
+    
+    private lateinit var btnAdd: Button
+    private lateinit var btnSave: Button
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var progressBar: ProgressBar
+    private lateinit var adapter: ProductMovingAdapter
+    private lateinit var service: CatalogDocumentMovingService
+    private lateinit var apiBitrix: ApiBitrix 
 
+    
+    private val elements: MutableList<DocumentElement> = mutableListOf()
+    private val baseList: MutableList<DocumentElement> = mutableListOf()
+    private val deletedProduct: MutableList<DocumentElement> = mutableListOf()
+    private val newProductInDocument: MutableList<DocumentElement> = mutableListOf()
+    private var storeList: List<Store> = listOf() 
+
+    
+    private val mapper = ProductToDocumentElementMapper()
+    private val productMapper = ProductMapper() 
+
+    
     private var scanDataReceiver: BroadcastReceiver? = null
 
-    private val baseUrl = "https://bitrix.izocom.by/rest/1/c953o6imkob2gpwd/"
-    private val retrofit: Retrofit = Retrofit.Builder()
-        .baseUrl(baseUrl)
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
-    private val apiBitrix: ApiBitrix = retrofit.create(ApiBitrix::class.java)
+    
+    private var idDocument: Int? = null
+    private var idDocumentLong: Long? = null 
 
-    private val elements: MutableList<DocumentElement> = mutableListOf()
-    private val baseList:MutableList<DocumentElement> = mutableListOf()
-    private val deletedProduct:MutableList<DocumentElement> = mutableListOf()
-    private val newProductInDocument:MutableList<DocumentElement> = mutableListOf()
+    
 
-    private lateinit var adapter:ProductMovingAdapter
-
-    private lateinit var progressBar: ProgressBar
-
-    private val service by lazy { CatalogDocumentMovingService() }
-
-    private var storeList:MutableList<Store> = mutableListOf()
-
-    private lateinit var recyclerView: RecyclerView
-
-    private val mapper = ProductToDocumentElementMapper()
-
-
-
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    @SuppressLint("UnspecifiedRegisterReceiverFlag", "MissingInflatedId", "NotifyDataSetChanged")
+    @SuppressLint("UnspecifiedRegisterReceiverFlag", "MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_products_document_moving)
 
+        
+        idDocument = intent.getStringExtra("idDocument")?.toIntOrNull()
+        idDocumentLong = intent.getStringExtra("idDocument")?.toLongOrNull()
+
+        if (idDocument == null || idDocumentLong == null) {
+            Log.e("ProductsActivity", "Invalid or missing 'idDocument' extra.")
+            Toast.makeText(this, "Ошибка: Неверный ID документа", Toast.LENGTH_LONG).show()
+            finish() 
+            return
+        }
+
+        
+        initializeDependencies()
+        initializeViews()
+        setupRecyclerView()
+        setupBroadcastReceiver()
+        setupButtonClickListeners()
+
+        
+        loadInitialData()
+        updateSaveButtonState() 
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        
+        scanDataReceiver?.let {
+            try {
+                unregisterReceiver(it)
+                Log.d("ProductsActivity", "Scan data receiver unregistered")
+            } catch (e: IllegalArgumentException) {
+                Log.w("ProductsActivity", "Receiver not registered?", e)
+            }
+        }
+        scanDataReceiver = null
+    }
+
+    
+
+    private fun initializeDependencies() {
+        service = CatalogDocumentMovingService() 
+
+        
+        val retrofitInstance: Retrofit = Retrofit.Builder()
+            .baseUrl("https://bitrix.izocom.by/rest/1/c953o6imkob2gpwd/") 
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+        apiBitrix = retrofitInstance.create(ApiBitrix::class.java)
+    }
+
+    private fun initializeViews() {
         btnAdd = findViewById(R.id.btnMovingAdd)
         btnSave = findViewById(R.id.btnMovingSave)
-
         recyclerView = findViewById(R.id.rvMovingProducts)
         progressBar = findViewById(R.id.progressBar)
+    }
 
+    private fun setupRecyclerView() {
         recyclerView.layoutManager = LinearLayoutManager(this)
-
-
         adapter = ProductMovingAdapter(
-            this@ProductsDocumentMovingActivity,
-            elements,
-            storeList
-        ) { position ->
-
-            val removedItem = elements.removeAt(position)
-            deletedProduct.add(removedItem)
-            adapter.updateData(ArrayList(elements))
-            updateSaveButtonState()
-
+            this, 
+            elements, 
+            storeList 
+        ) { position -> 
+            handleItemDeletion(position)
         }
         recyclerView.adapter = adapter
+        
+        adapter.setOnDataChangedListener {
+            updateSaveButtonState()
+        }
+    }
 
-        loadProducts()
-
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    private fun setupBroadcastReceiver() {
         scanDataReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                val action = intent?.action
-                if (action == "Scan_data_received") {
-                    val barcodeData = intent.getStringExtra("scanData").toString()
-                    Log.d("ScanActivity", "Scanned barcode: $barcodeData")
-                    getProductIdByBarcode(barcodeData)
-                }
-            }
-        }
-
-        registerReceiver(scanDataReceiver, IntentFilter("Scan_data_received"))
-
-        btnAdd?.setOnClickListener {
-            service.getVariations { products ->
-                if (products.isEmpty()) {
-                    showAlert("Нет доступных продуктов", emptyList()) {}
-                } else {
-                    showAlert("Выберите продукт", products) { selectedProduct ->
-                        if (selectedProduct != null) {
-                            val newElement = mapper.map(selectedProduct,intent.getStringExtra("idDocument")?.toLong())
-                            Toast.makeText(this, "Вы выбрали: ${selectedProduct.name}", Toast.LENGTH_SHORT).show()
-                            elements.add(0, newElement)
-                            newProductInDocument.add(newElement)
-                            adapter.notifyItemInserted(0)
-                            updateSaveButtonState()
-                        } else {
-                            Toast.makeText(this, "Выбор отменён", Toast.LENGTH_SHORT).show()
-                        }
+                if (intent?.action == "Scan_data_received") {
+                    val barcodeData = intent.getStringExtra("scanData")
+                    if (!barcodeData.isNullOrBlank()) {
+                        Log.d("ProductsActivity", "Scanned barcode: $barcodeData")
+                        processBarcodeScan(barcodeData) 
                     }
                 }
             }
         }
-        btnSave?.setOnClickListener {
-            service.conductDocument(
-                baseList,
-                intent.getStringExtra("idDocument")?.toInt(),
-                deletedProducts = deletedProduct,
-                context = this,
-                updatedProducts = elements,
-                newElement = newProductInDocument,
-                onLoading = { isLoading ->
-                    progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
-                },
-                callback = { success ->
-                    if (success) {
-                        Toast.makeText(this, "Документ успешно проведен", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this, "Ошибка при проведении документа", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            )
+        
+        val filter = IntentFilter("Scan_data_received")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(scanDataReceiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(scanDataReceiver, filter)
         }
+        Log.d("ProductsActivity", "Scan data receiver registered")
     }
 
+    private fun setupButtonClickListeners() {
+        btnAdd.setOnClickListener { handleAddButtonClick() }
+        btnSave.setOnClickListener { handleSaveButtonClick() }
+    }
 
+    
 
-    @SuppressLint("NotifyDataSetChanged")
-    private fun loadProducts() {
+    @SuppressLint("NotifyDataSetChanged") 
+    private fun loadInitialData() {
+        val currentIdDocument = idDocument ?: return 
         progressBar.visibility = View.VISIBLE
-        val idDocument = intent.getStringExtra("idDocument")?.toIntOrNull() ?: return
+        Log.d("ProductsActivity", "Starting loadInitialData for document $currentIdDocument")
 
-        try {
-            service.getStoreList { stores ->
-                storeList.clear()
-                storeList.addAll(stores)
+        lifecycleScope.launch {
+            var loadedStores: List<Store> = emptyList()
+            var loadedElements: List<DocumentElement> = emptyList()
+            var error: Throwable? = null
 
-                service.performDocumentElementsRequest(idDocument) { products ->
-                    Log.d("ProductsActivity", "Loaded products: ${products.size}")
+            try {
+                
+                coroutineScope { 
+                    val storesDeferred = async(Dispatchers.IO) { service.getStoreList() }
+                    val elementsDeferred = async(Dispatchers.IO) { service.getDocumentElementsWithDetails(currentIdDocument) }
 
-                    runOnUiThread {
-                        if (!isFinishing) {
+                    loadedStores = storesDeferred.await()
+                    loadedElements = elementsDeferred.await()
+                }
+                Log.d("ProductsActivity", "Loaded ${loadedStores.size} stores and ${loadedElements.size} elements.")
+
+            } catch (e: Exception) {
+                Log.e("ProductsActivity", "Error during initial data loading", e)
+                error = e
+            } finally {
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility = View.GONE
+                    if (isActive) { 
+                        if (error == null) {
+                            storeList = loadedStores
                             elements.clear()
-                            elements.addAll(products)
+                            elements.addAll(loadedElements)
                             baseList.clear()
-                            baseList.addAll(products)
+                            baseList.addAll(loadedElements) 
 
-
-                            adapter.notifyDataSetChanged()
+                            
+                            adapter.updateStores(storeList) 
+                            adapter.updateData(ArrayList(elements)) 
+                            
+                            updateSaveButtonState() 
+                        } else {
+                            Toast.makeText(this@ProductsDocumentMovingActivity, "Ошибка загрузки данных: ${error.message}", Toast.LENGTH_LONG).show()
+                            
+                            elements.clear()
+                            baseList.clear()
+                            adapter.updateData(ArrayList(elements))
+                            updateSaveButtonState()
                         }
-                        progressBar.visibility = View.GONE
                     }
                 }
             }
-        } catch (e: Exception) {
-            Log.e("ProductsActivity", "Error loading products", e)
-            progressBar.visibility = View.GONE
         }
     }
 
-    private fun getProductIdByBarcode(barcodeData: String) {
-        val call = apiBitrix.getProductIdByBarcode(barcodeData)
-        call.enqueue(object : Callback<ProductBarcodeResponse> {
-            override fun onResponse(call: Call<ProductBarcodeResponse>, response: Response<ProductBarcodeResponse>) {
-                if (response.isSuccessful) {
-                    val productId = response.body()?.result?.trim()
+    
 
-                    if (!productId.isNullOrEmpty()) {
-                        Log.d("ScanActivity", "Product ID received: $productId")
-                        getProductById(productId)
-                    } else {
-                        showAlertInfo("Товар не найден")
-                        Log.e("ScanActivity", "Product ID is null or empty")
-                    }
-                } else {
-                    Log.e("ScanActivity", "Failed to get product ID: ${response.errorBody()?.string()}")
-                }
-            }
+    private fun handleItemDeletion(position: Int) {
+        if (position < 0 || position >= elements.size) return
+        val removedItem = elements.removeAt(position)
+        
+        if (baseList.any { it.id == removedItem.id && removedItem.id != null }) {
+            deletedProduct.add(removedItem)
+        }
+        
+        newProductInDocument.remove(removedItem)
 
-            override fun onFailure(call: Call<ProductBarcodeResponse>, t: Throwable) {
-                Log.e("ScanActivity", "Error getting product ID", t)
-            }
-        })
+        adapter.notifyItemRemoved(position)
+        
+        updateSaveButtonState()
+        Log.d("ProductsActivity", "Item deleted: ${removedItem.name}. Deleted list size: ${deletedProduct.size}")
+
     }
 
+    private fun handleAddButtonClick() {
+        Log.d("ProductsActivity", "Add button clicked")
+        progressBar.visibility = View.VISIBLE 
+        btnAdd.isEnabled = false 
 
-
-
-    private fun getProductById(productId: String) {
-        val productRequest = ProductIdRequest(id = productId)
-        val call = apiBitrix.getProductById(productRequest)
-        call.enqueue(object : Callback<ProductResponse> {
-            override fun onResponse(call: Call<ProductResponse>, response: Response<ProductResponse>) {
-                if (response.isSuccessful) {
-                    val productDetails = response.body()?.result?.get("product") as? LinkedTreeMap<*, *>
-                    if (productDetails != null) {
-                        val productMapper = ProductMapper()
-                        val product = productMapper.mapToProduct(productDetails)
-
-                        service.getStoreForScan(
-                            productId = productId.toInt(),
-                            onComplete = { storeProducts ->
-
-                                val element = mapper.map(product, intent.getStringExtra("idDocument")?.toLong())
-                                if (!elements.contains(element)) {
-                                    showAlertScanInfo(element, storeProducts, onAddProduct = {
-                                        addProductToList(element)
-                                    })
-                                } else {
-                                    showAlertInfo("Этот товар уже добавлен")
+        lifecycleScope.launch {
+            var variations: List<Product> = emptyList()
+            var error: Throwable? = null
+            try {
+                variations = service.getVariations() 
+            } catch (e: Exception) {
+                Log.e("ProductsActivity", "Error getting variations", e)
+                error = e
+            } finally {
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility = View.GONE
+                    btnAdd.isEnabled = true 
+                    if (isActive) {
+                        if (error == null) {
+                            Log.d("ProductsActivity", "Loaded ${variations.size} variations.")
+                            if (variations.isEmpty()) {
+                                showAlert("Нет доступных продуктов", emptyList()) {} 
+                            } else {
+                                showAlert("Выберите продукт", variations) { selectedProduct ->
+                                    handleProductSelection(selectedProduct)
                                 }
                             }
-                        )
-
-                    } else {
-                        Log.e("ScanActivity", "Product details are null")
-
+                        } else {
+                            Toast.makeText(this@ProductsDocumentMovingActivity, "Ошибка загрузки вариантов: ${error.message}", Toast.LENGTH_SHORT).show()
+                        }
                     }
-                } else {
-                    Log.e("ScanActivity", "Failed to get product details: ${response.errorBody()}")
                 }
             }
-
-            override fun onFailure(call: Call<ProductResponse>, t: Throwable) {
-                Log.e("ScanActivity", "Error getting product details", t)
-            }
-        })
+        }
     }
 
-    @SuppressLint("NotifyDataSetChanged")
-    private fun addProductToList(element: DocumentElement) {
-        if (!element.checkInList(elements)) {
-            elements.add(0, element)
-            newProductInDocument.add(element)
-            adapter.notifyDataSetChanged()
+    private fun handleProductSelection(selectedProduct: Product?) {
+        
+        if (selectedProduct != null) {
+            val currentIdDocument = idDocumentLong ?: return 
+            val newElement = mapper.map(selectedProduct, currentIdDocument)
+            Toast.makeText(this, "Вы выбрали: ${selectedProduct.name}", Toast.LENGTH_SHORT).show()
 
-            recyclerView.recycledViewPool.clear()
+            
+            if (elements.none { it.elementId == newElement.elementId }) {
+                elements.add(0, newElement)
+                newProductInDocument.add(newElement) 
+                adapter.notifyItemInserted(0)
+                recyclerView.scrollToPosition(0) 
+                updateSaveButtonState()
+                Log.d("ProductsActivity", "Added new element: ${newElement.name}. New list size: ${newProductInDocument.size}")
+            } else {
+                Toast.makeText(this, "Товар '${selectedProduct.name}' уже есть в списке", Toast.LENGTH_SHORT).show()
+            }
+
+        } else {
+            Toast.makeText(this, "Выбор отменён", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    @SuppressLint("NotifyDataSetChanged") 
+    private fun addScannedProductToList(element: DocumentElement) {
+        
+        if (elements.none { it.elementId == element.elementId }) {
+            elements.add(0, element)
+            newProductInDocument.add(element) 
+            
+            
             adapter.notifyDataSetChanged()
+            recyclerView.scrollToPosition(0)
+            updateSaveButtonState()
+            Log.d("ProductsActivity", "Added scanned element: ${element.name}. New list size: ${newProductInDocument.size}")
         } else {
             showAlertInfo("Этот товар уже отсканирован")
         }
     }
 
-    private fun showAlertInfo(text: String) {
-        AlertDialog.Builder(this).apply {
-            setTitle("Предупреждение")
-            setMessage(text)
-            setCancelable(false)
-            setPositiveButton("Закрыть") { dialog, _ ->
-                dialog.cancel()
+
+    private fun handleSaveButtonClick() {
+        val currentIdDocument = idDocument ?: return
+        if (!areAllFieldsFilled(elements)) {
+            Toast.makeText(this, "Заполните все поля (Кол-во > 0, Склад Откуда/Куда, Склады не равны)", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        Log.d("ProductsActivity", "Save button clicked for document $currentIdDocument")
+        progressBar.visibility = View.VISIBLE
+        btnSave.isEnabled = false 
+
+        
+        val productsActuallyUpdated = elements.filter { current ->
+            val base = baseList.find { it.id == current.id }
+            base != null && ( 
+                    current.amount != base.amount || 
+                            current.storeFrom != base.storeFrom || 
+                            current.storeTo != base.storeTo 
+                    ) && !deletedProduct.contains(current) 
+        }
+
+        lifecycleScope.launch {
+            var success = false
+            var error: Throwable? = null
+
+            try {
+                Log.d("ProductsActivity", "Calling conductDocumentSuspend: base=${baseList.size}, deleted=${deletedProduct.size}, updated=${productsActuallyUpdated.size}, new=${newProductInDocument.size}")
+                success = service.conductDocumentSuspend(
+                    baseList = baseList,
+                    idDocument = currentIdDocument,
+                    context = this@ProductsDocumentMovingActivity,
+                    deletedProducts = deletedProduct,
+                    updatedProducts = productsActuallyUpdated, 
+                    newElements = newProductInDocument
+                )
+            } catch (e: Exception) {
+                Log.e("ProductsActivity", "Error calling conductDocumentSuspend", e)
+                error = e
+            } finally {
+                
+                
+                if (!success) { 
+                    withContext(Dispatchers.Main) {
+                        progressBar.visibility = View.GONE
+                        btnSave.isEnabled = true 
+                        if (isActive) {
+                            if (error != null) {
+                                Toast.makeText(this@ProductsDocumentMovingActivity, "Ошибка проведения: ${error.message}", Toast.LENGTH_LONG).show()
+                            } else {
+                                
+                                Log.w("ProductsActivity", "Conduct document reported failure, but no exception was caught here.")
+                                
+                            }
+                        }
+                    }
+                }
+                
+                
             }
-        }.create().show()
+        }
     }
 
+    
 
+    
+    private fun processBarcodeScan(barcode: String) {
+        val currentIdDocument = idDocumentLong ?: return 
+
+        progressBar.visibility = View.VISIBLE
+        Log.d("ProductsActivity", "Processing barcode: $barcode for document $currentIdDocument")
+
+        lifecycleScope.launch {
+            var fetchedProduct: Product? = null
+            var fetchedStoreAmounts: List<StoreAmountResponse.StoreProduct>? = null
+            var failureMessage: String? = null 
+            var exceptionOccurred: Throwable? = null 
+
+            try {
+                
+                val productId = withContext(Dispatchers.IO) {
+                    Log.d("ProductsActivity", "[IO] Getting product ID for barcode $barcode")
+                    val response = apiBitrix.getProductIdByBarcode(barcode) 
+
+                    if (response.isSuccessful) {
+                        
+                        val resultId = response.body()?.result?.trim() 
+
+                        if (!resultId.isNullOrEmpty()) {
+                            
+                            Log.d("ProductsActivity", "[IO] Product ID found: $resultId")
+                            resultId 
+                        } else {
+                            
+                            Log.w("ProductsActivity", "[IO] getProductIdByBarcode successful but result is null/empty for barcode $barcode.")
+                            failureMessage = "Товар по штрихкоду '$barcode' не найден."
+                            null 
+                        }
+                    } else {
+                        
+                        Log.w("ProductsActivity", "[IO] getProductIdByBarcode failed with code: ${response.code()}")
+                        
+                        failureMessage = "Ошибка при поиске штрихкода (${response.code()})."
+                        null 
+                    }
+                } 
+
+                
+                if (productId != null) {
+                    
+                    fetchedProduct = withContext(Dispatchers.IO) {
+                        Log.d("ProductsActivity", "[IO] Getting product details for ID $productId")
+                        val request = ProductIdRequest(id = productId)
+                        val response = apiBitrix.getProductById(request)
+                        if (response.isSuccessful) {
+                            val details = response.body()?.result?.get("product") as? LinkedTreeMap<*, *>
+                            details?.let { productMapper.mapToProduct(it) }?.also {
+                                Log.d("ProductsActivity", "[IO] Product details fetched: ${it.name}")
+                            }
+                        } else {
+                            Log.w("ProductsActivity", "[IO] getProductById failed for $productId: ${response.code()}")
+                            failureMessage = "Не удалось получить детали товара (ID: $productId)."
+                            null 
+                        }
+                    }
+                }
+
+                
+                if (fetchedProduct != null && productId != null) { 
+                    
+                    val productIdInt = productId.toIntOrNull()
+                    if (productIdInt != null) {
+                        Log.d("ProductsActivity", "Getting store amounts for product ID $productIdInt")
+                        fetchedStoreAmounts = service.getStoreForScan(productIdInt)
+                        Log.d("ProductsActivity", "Fetched ${fetchedStoreAmounts?.size ?: 0} store amount records.")
+                    } else {
+                        Log.w("ProductsActivity", "Invalid product ID format for store scan: $productId")
+                    }
+                }
+
+                
+            } catch (ioe: IOException) {
+                Log.e("ProductsActivity", "Network error processing barcode $barcode", ioe)
+                exceptionOccurred = ioe
+                failureMessage = "Ошибка сети при обработке штрихкода."
+            } catch (e: Exception) {
+                Log.e("ProductsActivity", "Error processing barcode $barcode", e)
+                exceptionOccurred = e
+                failureMessage = "Непредвиденная ошибка при обработке штрихкода."
+            }
+
+            
+            withContext(Dispatchers.Main) {
+                progressBar.visibility = View.GONE 
+
+                if (!isActive) {
+                    Log.w("ProductsActivity", "Coroutine cancelled, skipping UI update for barcode $barcode")
+                    return@withContext
+                }
+
+                if (fetchedProduct != null) {
+                    
+                    val element = mapper.map(fetchedProduct, currentIdDocument!!) 
+
+                    if (elements.none { it.elementId == element.elementId }) {
+                        Log.d("ProductsActivity", "Product not in list. Showing confirmation dialog for ${element.name}")
+                        showAlertScanInfo(element, fetchedStoreAmounts) {
+                            Log.d("ProductsActivity", "Add confirmed for ${element.name}")
+                            addScannedProductToList(element)
+                        }
+                    } else {
+                        Log.d("ProductsActivity", "Product ${element.name} already in list.")
+                        showAlertInfo("Этот товар уже добавлен")
+                    }
+                } else if (failureMessage != null) {
+                    
+                    Log.w("ProductsActivity", "Scan processing failed or product not found: $failureMessage")
+                    showAlertInfo(failureMessage!!) 
+                }
+                
+            } 
+        } 
+    } 
+
+    
+
+    private fun showAlertInfo(text: String) {
+        if (!isFinishing) {
+            AlertDialog.Builder(this).apply {
+                setTitle("Информация")
+                setMessage(text)
+                setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+            }.create().show()
+        }
+    }
 
     private fun showAlertScanInfo(
         element: DocumentElement,
         storeAmounts: List<StoreAmountResponse.StoreProduct>?,
-        onAddProduct: () -> Unit
+        onAddProduct: () -> Unit 
     ) {
-        val message = buildString {
-            append("${element.name}\n")
-            append("Остатки на складах:\n")
-            storeAmounts?.forEach { storeProduct ->
-                val store = storeList.find { it.id == storeProduct.storeId.toInt() }
-                val storeName = store?.title ?: "Неизвестный склад"
-                append("$storeName: ${storeProduct.amount}\n")
+        if (!isFinishing) {
+            val message = buildString {
+                append("${element.name}\n\n")
+                if (storeAmounts.isNullOrEmpty()) {
+                    append("Нет данных по остаткам.")
+                } else {
+                    append("Остатки на складах:\n")
+                    
+                    storeAmounts.forEach { storeProduct ->
+                        val storeName = storeList.find { it.id == storeProduct.storeId.toInt() }?.title ?: "Склад ID ${storeProduct.storeId}"
+                        append("$storeName: ${storeProduct.amount}\n")
+                    }
+                }
             }
+
+            AlertDialog.Builder(this).apply {
+                setTitle("Подтверждение товара")
+                setMessage(message)
+                setCancelable(false)
+                setPositiveButton("Добавить товар") { dialog, _ ->
+                    onAddProduct() 
+                    dialog.dismiss()
+                }
+                setNegativeButton("Отмена") { dialog, _ ->
+                    dialog.dismiss()
+                }
+            }.create().show()
         }
-
-        AlertDialog.Builder(this).apply {
-            setTitle("Подтверждение товара")
-            setMessage(message)
-            setCancelable(false)
-            setPositiveButton("Добавить товар") { dialog, _ ->
-                onAddProduct()
-                dialog.dismiss()
-            }
-            setNegativeButton("Отмена") { dialog, _ ->
-                dialog.dismiss()
-            }
-        }.create().show()
     }
 
-    private fun areAllFieldsFilled(elements: List<DocumentElement>): Boolean {
-        return elements.all { product ->
-            (product.amount ?: 0) > 0 && product.storeFrom != null && product.storeTo != null && product.storeFrom != product.storeTo
-        }
-    }
-
-    fun updateSaveButtonState() {
-        val isAllFieldsFilled = areAllFieldsFilled(elements)
-        btnSave?.isEnabled = isAllFieldsFilled
-        btnSave?.setBackgroundColor(
-            if (isAllFieldsFilled && elements.isNotEmpty()) {
-                ContextCompat.getColor(this, R.color.blue)
-            } else {
-                ContextCompat.getColor(this, R.color.gray)
-            }
-
-        )
-    }
 
     private fun showAlert(
         title: String,
         products: List<Product>,
         onProductSelected: (Product?) -> Unit
     ) {
-        val builder = android.app.AlertDialog.Builder(this)
-        builder.setTitle(title)
+        if (!isFinishing) {
+            val builder = AlertDialog.Builder(this) 
+            builder.setTitle(title)
 
-        val productNames = products.map { it.name }
-        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, productNames)
-
-        val listView = ListView(this)
-        listView.adapter = adapter
-
-        builder.setView(listView)
-        builder.setNegativeButton("Закрыть") { dialog, _ ->
-            onProductSelected(null)
-            dialog.dismiss()
+            if (products.isEmpty()) {
+                builder.setMessage("Нет доступных вариантов.")
+                builder.setPositiveButton("OK") { dialog, _ ->
+                    onProductSelected(null)
+                    dialog.dismiss()
+                }
+            } else {
+                val productNames = products.map { it.name ?: "Без имени" } 
+                builder.setItems(productNames.toTypedArray()) { dialog, which ->
+                    val selectedProduct = products[which]
+                    onProductSelected(selectedProduct)
+                    dialog.dismiss()
+                }
+                builder.setNegativeButton("Отмена") { dialog, _ ->
+                    onProductSelected(null)
+                    dialog.dismiss()
+                }
+            }
+            builder.create().show()
         }
-
-        val dialog = builder.create()
-
-        listView.setOnItemClickListener { _, _, position, _ ->
-            val selectedProduct = products[position]
-            onProductSelected(selectedProduct)
-            dialog.dismiss()
-        }
-
-        dialog.show()
     }
 
-
-
-    override fun onDestroy() {
-        super.onDestroy()
-
-        if (scanDataReceiver != null) {
-            unregisterReceiver(scanDataReceiver)
+    
+    private fun areAllFieldsFilled(elements: List<DocumentElement>): Boolean {
+        if (elements.isEmpty()) return false 
+        return elements.all { product ->
+            (product.amount ?: 0) > 0 && 
+                    product.storeFrom != null &&     
+                    product.storeTo != null &&       
+                    product.storeFrom != product.storeTo 
         }
+    }
+
+    
+    private fun updateSaveButtonState() {
+        
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThread { updateSaveButtonStateInternal() }
+        } else {
+            updateSaveButtonStateInternal()
+        }
+    }
+
+    private fun updateSaveButtonStateInternal() {
+        val canSave = areAllFieldsFilled(elements)
+        Log.d("ProductsActivity", "Updating save button state. CanSave: $canSave")
+        btnSave.isEnabled = canSave
+        btnSave.setBackgroundColor(
+            ContextCompat.getColor(
+                this,
+                if (canSave) R.color.blue else R.color.gray
+            )
+        )
     }
 }
