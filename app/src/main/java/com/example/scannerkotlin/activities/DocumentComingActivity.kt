@@ -10,75 +10,112 @@ import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope 
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
 import com.example.scannerkotlin.adapter.DocumentComingAdapter
 import com.example.scannerkotlin.decoration.SpaceItemDecoration
 import com.example.scannerkotlin.listener.OnItemClickListener
+import com.example.scannerkotlin.model.Document 
 import com.example.scannerkotlin.service.CatalogDocumentComingService
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
+
+
+
+
+import kotlinx.coroutines.Job 
+import kotlinx.coroutines.isActive 
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers 
 
+@RequiresApi(Build.VERSION_CODES.O) 
 class DocumentComingActivity : AppCompatActivity(), OnItemClickListener {
 
+    
     private lateinit var adapter: DocumentComingAdapter
-    private var service: CatalogDocumentComingService? = null
+    private lateinit var service: CatalogDocumentComingService
     private lateinit var progressBar: ProgressBar
-    private val scope = CoroutineScope(Dispatchers.Main)
+    private lateinit var recyclerView: RecyclerView 
 
-    @RequiresApi(Build.VERSION_CODES.O)
+    private var loadDocumentsJob: Job? = null 
+
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_document_coming)
 
-        progressBar = findViewById(R.id.progressBar)
-        val recyclerView: RecyclerView = findViewById(R.id.documentRecycleView)
+        
+        service = CatalogDocumentComingService()
 
-        setupRecyclerView(recyclerView)
+        
+        progressBar = findViewById(R.id.progressBar)
+        recyclerView = findViewById(R.id.documentRecycleView)
+
+        
+        setupRecyclerView()
+        
         loadDocuments()
     }
 
-    private fun setupRecyclerView(recyclerView: RecyclerView) {
+    private fun setupRecyclerView() {
         recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.addItemDecoration(SpaceItemDecoration(15))
+        recyclerView.addItemDecoration(SpaceItemDecoration(15)) 
+        
         adapter = DocumentComingAdapter(mutableListOf())
         recyclerView.adapter = adapter
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
+    @SuppressLint("NotifyDataSetChanged") 
     private fun loadDocuments() {
+        
+        loadDocumentsJob?.cancel()
         progressBar.visibility = View.VISIBLE
-        service = CatalogDocumentComingService()
+        Log.d("DocumentActivity", "Starting document load...")
 
-        scope.launch {
+        
+        loadDocumentsJob = lifecycleScope.launch {
+            var documents: List<Document> = emptyList() 
+            var error: Throwable? = null
+
             try {
-                val documents = withContext(Dispatchers.IO) {
-                    service?.getDocumentsSuspend()
-                }
+                
+                
+                documents = service.getDocumentsSuspend()
+                Log.d("DocumentActivity", "Loaded ${documents.size} documents")
 
-                documents?.let {
-                    Log.d("DocumentActivity", "Получено документов: ${it.size}")
-                    adapter.updateData(it)
-                }
             } catch (e: Exception) {
-                Log.e("DocumentActivity", "Ошибка загрузки документов", e)
-                Toast.makeText(
-                    this@DocumentComingActivity,
-                    "Ошибка загрузки: ${e.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Log.e("DocumentActivity", "Error loading documents", e)
+                error = e 
             } finally {
-                progressBar.visibility = View.GONE
+                
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility = View.GONE
+                    if (isActive) { 
+                        if (error != null) {
+                            Toast.makeText(
+                                this@DocumentComingActivity,
+                                "Ошибка загрузки: ${error.message}",
+                                Toast.LENGTH_LONG 
+                            ).show()
+                            adapter.updateData(emptyList()) 
+                        } else {
+                            
+                            adapter.updateData(documents)
+                            
+                        }
+                    } else {
+                        Log.d("DocumentActivity", "Document loading coroutine was cancelled. UI not updated.")
+                    }
+                }
             }
         }
     }
 
+    
     override fun onItemClick(title: String, idDocument: String) {
+        Log.d("DocumentActivity", "Item clicked: Title='$title', ID='$idDocument'")
         val intent = Intent(this, ProductsDocumentComingActivity::class.java).apply {
             putExtra("title", title)
             putExtra("idDocument", idDocument)
@@ -88,6 +125,8 @@ class DocumentComingActivity : AppCompatActivity(), OnItemClickListener {
 
     override fun onDestroy() {
         super.onDestroy()
-        scope.cancel()
+        
+        
+        
     }
 }

@@ -6,616 +6,634 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
-import com.example.scannerkotlin.activities.DocumentComingActivity
-import com.example.scannerkotlin.activities.MainActivity
+import com.example.scannerkotlin.activities.MainActivity 
 import com.example.scannerkotlin.api.ApiBitrix
 import com.example.scannerkotlin.mappers.DocumentElementMapper
 import com.example.scannerkotlin.mappers.DocumentMapper
 import com.example.scannerkotlin.mappers.ProductMapper
 import com.example.scannerkotlin.model.Document
-import com.example.scannerkotlin.model.DocumentElement
 import com.example.scannerkotlin.model.Product
 import com.example.scannerkotlin.model.ProductOffer
-import com.example.scannerkotlin.request.AddDocumentElementRequest
-import com.example.scannerkotlin.request.BarcodeRequest
-import com.example.scannerkotlin.request.CatalogDocumentElementListRequest
-import com.example.scannerkotlin.request.CatalogDocumentListRequest
-import com.example.scannerkotlin.request.DeletedDocumentElementRequest
-import com.example.scannerkotlin.request.ProductOfferRequest
-import com.example.scannerkotlin.request.ProductRequest
-import com.example.scannerkotlin.request.UpdateProductMeasureRequest
-import com.example.scannerkotlin.request.UpdatedDocumentElementsRequest
-import com.example.scannerkotlin.response.CatalogDocumentElementListResponse
-import com.example.scannerkotlin.response.CatalogDocumentListResponse
-import com.example.scannerkotlin.response.ErrorResponse
-import com.example.scannerkotlin.response.ProductOfferResponse
-import com.example.scannerkotlin.response.ProductResponse
+import com.example.scannerkotlin.request.* 
+import com.example.scannerkotlin.response.* 
 import com.google.gson.Gson
 import com.google.gson.internal.LinkedTreeMap
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import retrofit2.Call
-import retrofit2.Callback
+import kotlinx.coroutines.* 
 import retrofit2.HttpException
-import retrofit2.Response
 import retrofit2.Retrofit
-import retrofit2.awaitResponse
-import retrofit2.converter.gson.GsonConverterFactory
-import java.util.Collections
-import java.util.concurrent.CountDownLatch
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
+import retrofit2.converter.gson.GsonConverterFactory
+import java.io.IOException 
+
+@RequiresApi(Build.VERSION_CODES.O) 
 class CatalogDocumentComingService {
     private val baseUrl = "https://bitrix.izocom.by/rest/1/o2deu7wx7zfl3ib4/"
     private val barcodeBaseUrl = "https://bitrix.izocom.by/rest/1/sh1lchx64vrzcor6/"
 
-    private var retrofit: Retrofit = Retrofit.Builder()
-        .baseUrl(baseUrl)
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
+    private lateinit var apiBitrix: ApiBitrix
+    private lateinit var apiBarcode: ApiBitrix
+    private val gson = Gson()
 
-    private var barcodeRetrofit: Retrofit = Retrofit.Builder()
-        .baseUrl(barcodeBaseUrl)
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
-
-    private val apiBitrix: ApiBitrix? = retrofit.create(ApiBitrix::class.java)
-    private val apiBarcode: ApiBitrix? = barcodeRetrofit.create(ApiBitrix::class.java)
-
+    
     private val documentMapper = DocumentMapper()
     private val documentElementsMapper = DocumentElementMapper()
     private val productMapper = ProductMapper()
 
+    init {
+        val retrofit: Retrofit = Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+        apiBitrix = retrofit.create(ApiBitrix::class.java)
 
+        val barcodeRetrofit: Retrofit = Retrofit.Builder()
+            .baseUrl(barcodeBaseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+        apiBarcode = barcodeRetrofit.create(ApiBitrix::class.java)
+    }
 
+    
 
-    private fun conductDoc(
-        idDocument: Int,
-        context: Context,
-        onLoading: (Boolean) -> Unit,
-        callback: (Boolean) -> Unit
-    ) {
-        val callDocument = apiBitrix?.conductDocument(idDocument)
-        callDocument?.enqueue(object : Callback<HashMap<String, Any?>> {
-            override fun onResponse(
-                call: Call<HashMap<String, Any?>>,
-                response: Response<HashMap<String, Any?>>
-            ) {
-                onLoading(false)
+    
+    private suspend fun conductDocSuspend(idDocument: Int, context: Context): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("ComingService", "Attempting to conduct document $idDocument")
+                val response = apiBitrix.conductDocument(idDocument)
                 if (response.isSuccessful) {
-                    callback(true)
+                    Log.d("ComingService", "Document $idDocument conducted successfully.")
+                    true
                 } else {
-                    val errorDescription: ErrorResponse? = response.errorBody()?.string()?.let {
-                        Gson().fromJson(it, ErrorResponse::class.java)
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("ComingService", "Failed to conduct document $idDocument: ${response.code()} - $errorBody")
+                    val errorDescription = try {
+                        gson.fromJson(errorBody, ErrorResponse::class.java)?.errorDescription ?: "Unknown API error conducting document"
+                    } catch (e: Exception) { "Failed to parse conduct error response" }
+
+                    withContext(Dispatchers.Main) { 
+                        showAlertInfo(errorDescription, context)
                     }
-                    showAlertInfo(errorDescription?.errorDescription ?: "Unknown error", context)
-                    callback(false)
+                    false
                 }
-            }
-
-            override fun onFailure(call: Call<HashMap<String, Any?>>, t: Throwable) {
-                onLoading(false)
-                Log.d("conductError", t.stackTrace.toString())
-                callback(false)
-            }
-        }) ?: run {
-            onLoading(false)
-            callback(false)
-        }
-    }
-
-    private suspend fun deleteProducts(
-        deletedProducts: List<Product>,
-        idDocument: Int,
-        baseList: MutableList<Product>
-    ): Boolean = suspendCoroutine { continuation ->
-        if (deletedProducts.isEmpty()) {
-            continuation.resume(true)
-            return@suspendCoroutine
-        }
-
-        val latch = CountDownLatch(deletedProducts.size)
-        var hasErrors = false
-
-        deletedProducts.forEach { product ->
-            if (product in baseList) {
-                val request = DeletedDocumentElementRequest(
-                    id = product.idInDocument,
-                    fields = mutableMapOf("docId" to idDocument)
-                )
-
-                apiBitrix?.deleteDocumentElement(request)
-                    ?.enqueue(object : Callback<HashMap<String, Any?>> {
-                        override fun onResponse(
-                            call: Call<HashMap<String, Any?>>,
-                            response: Response<HashMap<String, Any?>>
-                        ) {
-                            if (!response.isSuccessful) {
-                                hasErrors = true
-                                Log.d("deletedElementError", "Error from deleting")
-                            }
-                            latch.countDown()
-                        }
-
-                        override fun onFailure(
-                            call: Call<HashMap<String, Any?>>,
-                            t: Throwable
-                        ) {
-                            hasErrors = true
-                            Log.d("deletedElementError", "Network error: ${t.message}")
-                            latch.countDown()
-                        }
-                    }) ?: run {
-                    hasErrors = true
-                    latch.countDown()
-
-                }
-            }
-
-        }
-
-        Thread {
-            latch.await()
-            continuation.resume(!hasErrors)
-        }.start()
-    }
-
-    private suspend fun updateProductsInDoc(
-        updatedProducts: List<Product>,
-        idDocument: Int
-    ): Boolean = suspendCoroutine { continuation ->
-        Log.d("qqq","updateProductsInDoc: started with ${updatedProducts.size} products for document $idDocument ")
-
-        if (updatedProducts.isEmpty()) {
-            Log.d("qqqq","updateProductsInDoc: empty products list - returning true")
-            continuation.resume(true)
-            return@suspendCoroutine
-        }
-
-        val latch = CountDownLatch(updatedProducts.size)
-        var hasErrors = false
-
-        for (product in updatedProducts) {
-            Log.d("qqqq","updateProductsInDoc: processing product ${product.id} (docElementId=${product.idInDocument})")
-
-            val updateRequest = UpdatedDocumentElementsRequest(
-                id = product.idInDocument,
-                fields = mutableMapOf(
-                    "docId" to idDocument,
-                    "amount" to product.quantity.toString()
-                )
-            )
-
-            Log.d("qqqq","updateProductsInDoc: sending update request for product ${product.id}: $updateRequest")
-
-            apiBitrix?.updateDocumentElement(updateRequest)?.enqueue(object : Callback<HashMap<String, Any?>> {
-                override fun onResponse(call: Call<HashMap<String, Any?>>, response: Response<HashMap<String, Any?>>) {
-                    if (response.isSuccessful) {
-                        Log.d("qqqq","updateProductsInDoc: successfully updated product ${product.id} in document")
-
-                        try {
-                            Log.d("qqqq","updateProductsInDoc: setting barcode for product ${product.id}: ${product.barcode}")
-                            setBarcodeForProduct(product.id, product.barcode.toString())
-
-                            val updateMeasureRequest = UpdateProductMeasureRequest(
-                                id = product.id,
-                                fields = mutableMapOf("measure" to product.measureId)
-                            )
-                            Log.d("qqqq","updateProductsInDoc: updating measure for product ${product.id}: $updateMeasureRequest")
-                            apiBitrix.updateProductMeasure(updateMeasureRequest)
-                        } catch (e: Exception) {
-                            Log.e("qqqq", "updateProductsInDoc: error while updating barcode/measure for product ${product.id}")
-                            hasErrors = true
-                        }
-                    } else {
-                        Log.e("qqqq","updateProductsInDoc: failed to update product ${product.id} in document. Response code: ${response.code()}, error: ${response.errorBody()?.string()}")
-                        hasErrors = true
-                    }
-                    latch.countDown()
-                    Log.d("qqqq","updateProductsInDoc: remaining products to process: ${latch.count}")
-                }
-
-                override fun onFailure(call: Call<HashMap<String, Any?>>, t: Throwable) {
-                    Log.e("qqqq", "updateProductsInDoc: network error while updating product ${product.id}")
-                    hasErrors = true
-                    latch.countDown()
-                    Log.d("qqqq","updateProductsInDoc: remaining products to process: ${latch.count}")
-                }
-            }) ?: run {
-                Log.e("qqqq","updateProductsInDoc: apiBitrix is null or request creation failed for product ${product.id}")
-                hasErrors = true
-                latch.countDown()
-                Log.d("qqqq","updateProductsInDoc: remaining products to process: ${latch.count}")
-            }
-        }
-
-        Thread {
-            try {
-                Log.d("qqqq","updateProductsInDoc: waiting for all products to be processed...")
-                latch.await()
-                Log.d("qqqq","updateProductsInDoc: all products processed. Final status: ${!hasErrors}")
-                continuation.resume(!hasErrors)
             } catch (e: Exception) {
-                Log.e("qqqq","updateProductsInDoc: error while waiting for latch")
-                continuation.resume(false)
-            }
-        }.start()
-    }
-
-
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun conductDocument(
-        baseList: MutableList<Product>,
-        idDocument: Int?,
-        context: Context,
-        deletedProducts: MutableList<Product>,
-        updatedProducts: MutableList<Product>,
-        productOffersList: MutableList<ProductOffer>,
-        onLoading: (Boolean) -> Unit,
-        callback: (Boolean) -> Unit
-    ) {
-        if (idDocument == null) {
-            Log.e("conductDocument", "Ошибка: id документа отсутствует.")
-            callback(false)
-            return
-        }
-
-        onLoading(true)
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val deleteSuccess = deleteProducts(deletedProducts, idDocument, baseList)
-                if (!deleteSuccess) {
-                    withContext(Dispatchers.Main) {
-                        onLoading(false)
-                        callback(false)
-                    }
-                    return@launch
-                }
-
-                val savedProducts = saveProductVariations(productOffersList)
-
-                if (savedProducts.isNotEmpty()) {
-                    val addSuccess = addProductsToDoc(savedProducts, idDocument, updatedProducts)
-                    if (!addSuccess) {
-                        withContext(Dispatchers.Main) {
-                            onLoading(false)
-                            callback(false)
-                        }
-                        return@launch
-                    }
-                }
-
-                val updateSuccess = updateProductsInDoc(updatedProducts, idDocument)
-                if (!updateSuccess) {
-                    withContext(Dispatchers.Main) {
-                        onLoading(false)
-                        callback(false)
-                    }
-                    return@launch
-                }
-
+                Log.e("ComingService", "Error conducting document $idDocument", e)
                 withContext(Dispatchers.Main) {
-                    conductDoc(idDocument, context, onLoading) { conductSuccess ->
-                        if (conductSuccess) {
-                            val intent = Intent(context, MainActivity::class.java)
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            context.startActivity(intent)
-                        } else {
-                            callback(false)
-                        }
-                    }
+                    showAlertInfo("Network or unexpected error conducting document.", context)
                 }
-
-            } catch (e: Exception) {
-                Log.e("conductDocument", "Ошибка: ${e.message}")
-                withContext(Dispatchers.Main) {
-                    onLoading(false)
-                    callback(false)
-                }
+                false
             }
         }
     }
 
-
-    private suspend fun addProductsToDoc(
-        savedProducts: List<Pair<Int, ProductOffer>>,
+    
+    private suspend fun deleteProductsSuspend( 
+        deletedProducts: List<Product>, 
         idDocument: Int,
-        updatedProducts: List<Product>
+        baseList: List<Product> 
     ): Boolean = coroutineScope {
-        val results = savedProducts.map { (elementId, productOffer) ->
-            async {
+        val productsToDelete = deletedProducts.filter { baseList.contains(it) && it.idInDocument != null }
+        if (productsToDelete.isEmpty()) return@coroutineScope true
+
+        Log.d("ComingService", "Deleting ${productsToDelete.size} products for document $idDocument")
+
+        val deferredResults = productsToDelete.map { product ->
+            async(Dispatchers.IO) { 
                 try {
+                    val request = DeletedDocumentElementRequest(
+                        id = product.idInDocument!!, 
+                        fields = mutableMapOf("docId" to idDocument)
+                    )
+                    val response = apiBitrix.deleteDocumentElement(request)
+                    if (!response.isSuccessful) {
+                        Log.e("ComingService", "Failed to delete product element ${product.idInDocument}: ${response.code()} - ${response.errorBody()?.string()}")
+                        false
+                    } else {
+                        Log.d("ComingService", "Deleted product element ${product.idInDocument} successfully")
+                        true
+                    }
+                } catch (e: Exception) {
+                    Log.e("ComingService", "Error deleting product element ${product.idInDocument}", e)
+                    false
+                }
+            }
+        }
+        deferredResults.awaitAll().all { it } 
+    }
+
+    
+    private suspend fun updateProductsInDocSuspend( 
+        updatedProducts: List<Product>, 
+        idDocument: Int
+    ): Boolean = coroutineScope {
+        val productsToUpdate = updatedProducts.filter { it.idInDocument != null }
+        if (productsToUpdate.isEmpty()) {
+            Log.d("ComingService", "No products with idInDocument to update for document $idDocument")
+            return@coroutineScope true
+        }
+
+        Log.d("ComingService", "Updating ${productsToUpdate.size} products for document $idDocument")
+
+        val deferredResults = productsToUpdate.map { product ->
+            async(Dispatchers.IO) { 
+                var overallSuccess = false 
+                try {
+                    
+                    val updateRequest = UpdatedDocumentElementsRequest(
+                        id = product.idInDocument!!,
+                        fields = mutableMapOf(
+                            "docId" to idDocument,
+                            "amount" to product.quantity.toString() 
+                        )
+                    )
+                    Log.d("ComingService", "Updating doc element ${product.idInDocument} for product ${product.id}, amount ${product.quantity}")
+                    val updateResponse = apiBitrix.updateDocumentElement(updateRequest)
+
+                    if (updateResponse.isSuccessful) {
+                        Log.d("ComingService", "Successfully updated doc element ${product.idInDocument}")
+
+                        
+                        val barcodeSuccess = if (!product.barcode.isNullOrBlank()) {
+                            setBarcodeForProductSuspend(product.id, product.barcode!!)
+                        } else {
+                            Log.w("ComingService", "Skipping barcode set for product ${product.id} - barcode is null or blank")
+                            true 
+                        }
+
+                        
+                        
+                        val measureUpdateSuccess = if (product.measureId != null) {
+                            updateProductMeasureSuspend(product.id, product.measureId!!)
+                        } else {
+                            Log.w("ComingService", "Skipping measure update for product ${product.id} - measureId is null")
+                            true 
+                        }
+
+
+                        overallSuccess = barcodeSuccess && measureUpdateSuccess
+                        if (!overallSuccess) {
+                            Log.e("ComingService", "Failed during barcode/measure update for product ${product.id} after successful element update.")
+                        }
+
+                    } else {
+                        Log.e("ComingService", "Failed to update doc element ${product.idInDocument}: ${updateResponse.code()} - ${updateResponse.errorBody()?.string()}")
+                        overallSuccess = false
+                    }
+                } catch (e: Exception) {
+                    Log.e("ComingService", "Error updating product chain for ${product.id} (docElementId=${product.idInDocument})", e)
+                    overallSuccess = false
+                }
+                overallSuccess 
+            }
+        }
+        deferredResults.awaitAll().all { it } 
+    }
+
+    
+    private suspend fun setBarcodeForProductSuspend(productId: Int, barcode: String): Boolean {
+        val barcodeRequest = BarcodeRequest(productId, barcode)
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("ComingService", "Setting barcode '$barcode' for product ID: $productId")
+                val response = apiBarcode.setBarcodeByProductId(barcodeRequest)
+                if (!response.isSuccessful) {
+                    Log.e("ComingService", "Error setting barcode for $productId: ${response.code()} - ${response.errorBody()?.string()}")
+                }
+                response.isSuccessful
+            } catch (e: Exception) {
+                Log.e("ComingService", "Network error setting barcode for $productId", e)
+                false
+            }
+        }
+    }
+
+    
+    private suspend fun updateProductMeasureSuspend(productId: Int, measureId: Int): Boolean {
+        val request = UpdateProductMeasureRequest(
+            id = productId,
+            fields = mutableMapOf("measure" to measureId)
+        )
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("ComingService", "Updating measure to $measureId for product ID: $productId")
+                val response = apiBitrix.updateProductMeasure(request)
+                if (!response.isSuccessful) {
+                    Log.e("ComingService", "Error updating measure for $productId: ${response.code()} - ${response.errorBody()?.string()}")
+                }
+                response.isSuccessful
+            } catch (e: Exception) {
+                Log.e("ComingService", "Network error updating measure for $productId", e)
+                false
+            }
+        }
+    }
+
+    
+    suspend fun conductDocumentSuspend(
+        baseList: List<Product>,
+        idDocument: Int?,
+        context: Context, 
+        deletedProducts: List<Product>,
+        updatedProducts: List<Product>,
+        currentProductListState: List<Product>,
+        productOffersList: List<ProductOffer>
+    ): Boolean {
+        if (idDocument == null) {
+            Log.e("ComingService", "Error: Document ID is null for conduct.")
+            return false
+        }
+
+        try {
+            Log.d("ComingService", "Starting conduct process for document $idDocument")
+            
+            val deleteSuccess = deleteProductsSuspend(deletedProducts, idDocument, baseList)
+            if (!deleteSuccess) {
+                Log.e("ComingService", "Conduct failed at delete step for document $idDocument")
+                withContext(Dispatchers.Main) { showAlertInfo("Ошибка при удалении товаров.", context) }
+                return false
+            }
+            Log.d("ComingService", "Delete step successful.")
+
+            
+            val savedVariations = saveProductVariationsSuspend(productOffersList)
+            Log.d("ComingService", "Save variations step resulted in ${savedVariations.size} saved products.")
+
+            
+            val addSuccess = if (savedVariations.isNotEmpty()) {
+                addProductsToDocSuspend(savedVariations, idDocument, currentProductListState)
+            } else { true }
+            if (!addSuccess) {
+                Log.e("ComingService", "Conduct failed at add step for document $idDocument")
+                withContext(Dispatchers.Main) { showAlertInfo("Ошибка при добавлении новых товаров.", context) }
+                return false
+            }
+            Log.d("ComingService", "Add step successful.")
+
+            
+            val updateSuccess = updateProductsInDocSuspend(updatedProducts, idDocument)
+            if (!updateSuccess) {
+                Log.e("ComingService", "Conduct failed at update step for document $idDocument")
+                withContext(Dispatchers.Main) { showAlertInfo("Ошибка при обновлении товаров.", context) }
+                return false
+            }
+            Log.d("ComingService", "Update step successful.")
+
+            
+            val conductSuccess = conductDocSuspend(idDocument, context) 
+
+            return if (conductSuccess) {
+                Log.d("ComingService", "Conduct final step successful for document $idDocument.")
+                true 
+            } else {
+                Log.e("ComingService", "Conduct final step failed for document $idDocument")
+                
+                false 
+            }
+
+        } catch (e: Exception) {
+            Log.e("ComingService", "Unexpected error during conduct process for doc $idDocument", e)
+            
+            withContext(Dispatchers.Main) { showAlertInfo("Непредвиденная ошибка при проведении: ${e.localizedMessage}", context) }
+            return false
+        }
+        
+    }
+
+
+
+    
+    private suspend fun addProductsToDocSuspend(
+        savedVariations: List<Pair<Int, ProductOffer>>,
+        idDocument: Int,
+        
+        currentProductListState: List<Product>
+    ): Boolean = coroutineScope {
+        if (savedVariations.isEmpty()) return@coroutineScope true
+
+        Log.d("ComingService", "Adding ${savedVariations.size} doc elements for document $idDocument using current list state")
+
+        val deferredResults = savedVariations.map { (elementId, productOffer) ->
+            async(Dispatchers.IO) {
+                var success = false
+                try {
+                    
+                    
+                    val currentProduct = currentProductListState.find { it.id == productOffer.product.id }
+
+                    if (currentProduct == null) {
+                        Log.e("ComingService", "CRITICAL: Cannot find product with ID ${productOffer.product.id} in currentProductListState during addProductsToDocSuspend!")
+                        return@async false 
+                    }
+
+                    
+                    val currentQuantity = currentProduct.quantity ?: 0 
+                    Log.d("ComingService", "Using quantity $currentQuantity for product ${currentProduct.id} (Offer elementId: $elementId) from current list state.")
+
                     val request = AddDocumentElementRequest(
                         fields = mutableMapOf(
                             "docId" to idDocument,
                             "storeFrom" to 0,
                             "storeTo" to 1,
-                            "elementId" to elementId,
-                            "amount" to productOffer.quantity.toString(),
+                            "elementId" to elementId, 
+                            "amount" to currentQuantity.toString(), 
                             "purchasingPrice" to 0
                         )
                     )
+                    val response = apiBitrix.addDocumentElement(request)
+                    if (response.isSuccessful) {
+                        val newDocElementId = try { (((response.body()
+                            ?.get("result") as? Map<*, *>)
+                            ?.get("documentElement") as? LinkedTreeMap<*, *>)
+                            ?.get("id") as? Double)?.toInt() } catch (e: Exception) { null }
 
-                    val response = apiBitrix?.addDocumentElement(request)?.awaitResponse()
-                    if (response?.isSuccessful == true) {
-                        val id: Int? = try {
-                            (((response.body()
-                                ?.get("result") as? Map<*, *>)
-                                ?.get("documentElement") as? LinkedTreeMap<*, *>)
-                            ?.get("id") as? Double)?.toInt()
-                        } catch (e: Exception) {
-                            null
+                        if (newDocElementId != null) {
+                            
+                            currentProduct.idInDocument = newDocElementId
+                            Log.d("ComingService", "Added doc element for product ID $elementId, new docElementId: $newDocElementId. Updated idInDocument in current list state for product ${currentProduct.id}.")
+                            success = true
+                        } else {
+                            Log.w("ComingService", "Added doc element for product ID $elementId, but failed to parse new docElementId")
+                            success = true 
                         }
-
-                        updatedProducts.find { it == productOffer.product }?.idInDocument = id
-                        Log.d("присвоение", "Присвоили ID в документе: ${productOffer.product.name}, $id")
-                        true
                     } else {
-                        false
+                        Log.e("ComingService", "Failed to add doc element for product ID $elementId: ${response.code()} - ${response.errorBody()?.string()}")
+                        success = false
                     }
                 } catch (e: Exception) {
-                    false
+                    Log.e("ComingService", "Error adding doc element for product ID ${productOffer.product.id}", e)
+                    success = false
                 }
+                success
             }
         }
-
-        results.awaitAll().all { it }
+        deferredResults.awaitAll().all { it }
     }
 
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private suspend fun saveProductVariations(
-        productOffersList: List<ProductOffer>
-    ): List<Pair<Int, ProductOffer>> = suspendCoroutine { continuation ->
-        if (productOffersList.isEmpty()) {
-            continuation.resume(emptyList())
-            return@suspendCoroutine
-        }
+    
+    private suspend fun saveProductVariationsSuspend(
+        productOffersList: List<ProductOffer> 
+    ): List<Pair<Int, ProductOffer>> = coroutineScope { 
+        if (productOffersList.isEmpty()) return@coroutineScope emptyList()
 
-        val savedProducts = Collections.synchronizedList(mutableListOf<Pair<Int, ProductOffer>>())
-        val latch = CountDownLatch(productOffersList.size)
+        Log.d("ComingService", "Saving ${productOffersList.size} product variations (offers)")
 
-        for (productOffer in productOffersList) {
-            addVariationOfProduct(productOffer) { productId ->
-                if (productId != null) {
-                    setBarcodeForProduct(productId, productOffer.barcode.toString())
-                    savedProducts.add(Pair(productId, productOffer))
+        val deferredResults = productOffersList.map { productOffer ->
+            async(Dispatchers.IO) { 
+                var savedPair: Pair<Int, ProductOffer>? = null
+                try {
+                    
+                    val productId = addVariationOfProductSuspend(productOffer) 
+
+                    if (productId != null) {
+                        
+                        val barcodeSuccess = if (!productOffer.barcode.isNullOrBlank()) {
+                            setBarcodeForProductSuspend(productId, productOffer.barcode!!)
+                        } else { true } 
+
+                        if (barcodeSuccess) {
+                            
+                            savedPair = Pair(productId, productOffer)
+                            Log.d("ComingService", "Successfully saved variation for ${productOffer.name} with ID $productId")
+                        } else {
+                            Log.e("ComingService", "Failed to set barcode for variation ${productOffer.name} (ID: $productId)")
+                        }
+                    }
+                    
+                } catch (e: Exception) {
+                    Log.e("ComingService", "Error saving variation for ${productOffer.name}", e)
                 }
-                latch.countDown()
+                savedPair 
             }
         }
-
-        Thread {
-            latch.await()
-            continuation.resume(savedProducts)
-        }.start()
+        
+        deferredResults.awaitAll().filterNotNull()
     }
 
-
-
-    private fun setBarcodeForProduct(productId: Int, barcode: String) {
-        val barcodeRequest = BarcodeRequest(productId, barcode)
-        val callBarcode: Call<HashMap<String, Any?>>? = apiBarcode?.setBarcodeByProductId(barcodeRequest)
-        callBarcode?.enqueue(object : Callback<HashMap<String, Any?>> {
-            override fun onResponse(call: Call<HashMap<String, Any?>>, response: Response<HashMap<String, Any?>>) {
-                if (response.isSuccessful) {
-                    Log.d("Barcode", "Barcode set successfully for product ID: $productId")
-                } else {
-                    Log.e("Barcode", "Error setting barcode: ${response.errorBody()?.string()}")
-                }
-            }
-
-            override fun onFailure(call: Call<HashMap<String, Any?>>, t: Throwable) {
-                Log.e("Barcode", "Network error: ${t.message}")
-            }
-        })
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun addVariationOfProduct(productOffer: ProductOffer, onComplete: (Int?) -> Unit) {
-        val productOfferRequest = ProductOfferRequest(
-            fields = mapOf(
-                "iblockId" to 15,
-                "name" to productOffer.name.toString(),
-                "measure" to productOffer.measure.toString(),
-                "parentId" to productOffer.parentId.toString(),
-                "dateCreate" to productOffer.dateCreate.toString(),
-                "purchasingPrice" to productOffer.purchasingPrice.toString(),
-                "purchasingCurrency" to productOffer.purchasingCurrency.toString()
-            )
+    
+    
+    private suspend fun addVariationOfProductSuspend(productOffer: ProductOffer): Int? {
+        
+        val fieldsMap: MutableMap<String, Any?> = mutableMapOf(
+            "iblockId" to 15, 
+            "name" to productOffer.name,
+            "measure" to productOffer.measure,
+            "parentId" to productOffer.parentId,
+            "dateCreate" to productOffer.dateCreate?.toString(), 
+            "purchasingPrice" to productOffer.purchasingPrice,
+            "purchasingCurrency" to productOffer.purchasingCurrency
         )
 
-        val callOffer: Call<ProductOfferResponse>? = apiBitrix?.addVariationsOfProduct(productOfferRequest)
-        callOffer?.enqueue(object : Callback<ProductOfferResponse> {
-            override fun onResponse(call: Call<ProductOfferResponse>, response: Response<ProductOfferResponse>) {
+        
+        val nonNullFields: MutableMap<String, Any> = fieldsMap
+            .filterValues { it != null } 
+            .mapValues { it.value!! } 
+            .toMutableMap()           
+
+        
+        val productOfferRequest = ProductOfferRequest(fields = nonNullFields)
+
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("ComingService", "Adding variation for ${productOffer.name}")
+                val response = apiBitrix.addVariationsOfProduct(productOfferRequest)
                 if (response.isSuccessful) {
                     val productDetails = response.body()?.result?.get("offer") as? LinkedTreeMap<*, *>
                     val productId = productDetails?.get("id")?.let { (it as? Double)?.toInt() }
-
-                    if (productId != null) {
-                        Log.d("Product", "Product ID: $productId")
-                    } else {
-                        Log.e("CatalogService", "Product details are null")
+                    if (productId == null) {
+                        Log.e("ComingService", "addVariationOfProduct successful but failed to parse offer ID from response")
                     }
-                    onComplete(productId)
+                    productId 
                 } else {
-                    Log.e("API", "Ошибка: ${response.errorBody()?.string()}")
-                    onComplete(null)
+                    Log.e("ComingService", "Error adding variation ${productOffer.name}: ${response.code()} - ${response.errorBody()?.string()}")
+                    null 
                 }
+            } catch (e: Exception) {
+                Log.e("ComingService", "Network error adding variation ${productOffer.name}", e)
+                null 
             }
-
-            override fun onFailure(call: Call<ProductOfferResponse>, t: Throwable) {
-                Log.e("API", "Ошибка сети: ${t.message}")
-                onComplete(null)
-            }
-        })
+        }
     }
 
+    
 
-    @RequiresApi(Build.VERSION_CODES.O)
+    
     suspend fun getDocumentsSuspend(): List<Document> {
         val requestWithParams = CatalogDocumentListRequest(
             filter = mutableMapOf(
                 "status" to "N",
-                "docType" to "A"
+                "docType" to "A" 
             )
         )
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("ComingService", "Requesting documents list...")
+                val response = apiBitrix.getDocumentListSuspend(requestWithParams) 
 
-        return try {
-            val result = withContext(Dispatchers.IO) {
-                apiBitrix?.getDocumentListSuspend(requestWithParams)
-                    ?: throw IllegalStateException("API not initialized")
-            }
+                if (response.isSuccessful) {
+                    val rawDocuments = response.body()?.result?.get("documents") as? List<*>
+                        ?: run {
+                            Log.w("ComingService", "Documents list is null or not a list in response")
+                            return@withContext emptyList<Document>()
+                        }
 
-            val rawDocuments = result.result["documents"] as? List<*>
-                ?: throw IllegalStateException("Invalid documents format")
-
-            rawDocuments.mapNotNull { documentMap ->
-                try {
-                    documentMapper.mapToDocument(documentMap as LinkedTreeMap<*, *>)
-                } catch (e: Exception) {
-                    Log.e("DocumentMapping", "Error mapping document: ${e.message}")
-                    null
+                    rawDocuments.mapNotNull { documentMap ->
+                        try {
+                            documentMapper.mapToDocument(documentMap as LinkedTreeMap<*, *>)
+                        } catch (e: Exception) {
+                            Log.e("ComingService", "Error mapping document", e)
+                            null
+                        }
+                    }.also { Log.d("ComingService", "Loaded ${it.size} documents") }
+                } else {
+                    Log.e("ComingService", "getDocumentsSuspend failed: ${response.code()} - ${response.message()}")
+                    emptyList()
                 }
-            }.also { mappedDocuments ->
-                Log.d("DocumentLoad", "Loaded ${mappedDocuments.size} documents")
+            } catch (e: HttpException) {
+                Log.e("ComingService", "HTTP error in getDocumentsSuspend: ${e.code()} - ${e.message()}", e)
+                emptyList()
+            } catch (e: IOException) {
+                Log.e("ComingService", "Network error in getDocumentsSuspend", e)
+                emptyList()
+            } catch (e: Exception) {
+                Log.e("ComingService", "Failed to load documents", e)
+                emptyList()
             }
-
-        } catch (e: HttpException) {
-            Log.e("NetworkError", "HTTP error: ${e.code()} - ${e.message()}", e)
-            throw Exception("HTTP error: ${e.code()} - ${e.message()}")
-        } catch (e: Exception) {
-            Log.e("NetworkError", "Failed to load documents", e)
-            throw Exception("Network failure: ${e.localizedMessage}")
         }
     }
 
-    fun performDocumentElementsRequest(
-        idDocument: Int,
-        callback: (MutableList<Product>) -> Unit
-    ) {
-        val documentElements = mutableListOf<DocumentElement>()
-
-        val requestElementsWithParams = CatalogDocumentElementListRequest(
-            filter = mutableMapOf("docId" to idDocument)
-        )
-
-        val callDocumentElementsList: Call<CatalogDocumentElementListResponse>? =
-            apiBitrix?.getDocumentProducts(requestElementsWithParams)
-
-        callDocumentElementsList?.enqueue(object : Callback<CatalogDocumentElementListResponse> {
-            override fun onResponse(
-                call: Call<CatalogDocumentElementListResponse>,
-                response: Response<CatalogDocumentElementListResponse>
-            ) {
+    suspend fun getProductsForSelection(iblockId: Int): List<Product> {
+        val productRequest = ProductRequest(filter = mapOf("iblockId" to iblockId))
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("ComingService", "Getting products for selection, iblockId=$iblockId")
+                val response = apiBitrix.getProducts(productRequest) 
                 if (response.isSuccessful) {
-                    val result: CatalogDocumentElementListResponse? = response.body()
-                    result?.let {
-                        val documentElement = it.result["documentElements"] as? ArrayList<*>
-                        documentElement?.forEach { element ->
-                            (element as? LinkedTreeMap<*, *>)?.let { elementMap ->
-                                documentElements.add(documentElementsMapper.mapToDocumentElement(elementMap))
+                    val rawProducts = response.body()?.result?.get("products") as? List<*>
+                    rawProducts?.mapNotNull { unit ->
+                        (unit as? LinkedTreeMap<*, *>)?.let { productMap ->
+                            try {
+                                productMapper.mapToProduct(productMap)
+                            } catch (e: Exception) {
+                                Log.e("ComingService", "Error mapping product for selection", e)
+                                null
                             }
                         }
-                    }
-                }
-
-                val idDocumentsElements = documentElements.mapNotNull { it.elementId }
-
-                val productRequest = ProductRequest(
-                    filter = mapOf(
-                        "id" to idDocumentsElements,
-                        "iblockId" to listOf(14, 15)
-                    )
-                )
-
-
-                performFinalRequest(
-                    productRequest,
-                    onComplete = { products ->
-
-                        for (product in products) {
-                            for (documentElement in documentElements) {
-                                if (product.id == documentElement.elementId) {
-                                    if (documentElement.id != null) {
-                                        product.idInDocument = documentElement.id
-                                    } else {
-                                        Log.e("CatalogService", "documentElement.id is null for product ${product.id}")
-                                    }
-                                }
-                            }
-                        }
-                        callback(products)
-                    }
-                )
-            }
-
-            override fun onFailure(call: Call<CatalogDocumentElementListResponse>, t: Throwable) {
-                Log.e("CatalogService", "Network error (elements): ${t.message}", t)
-                callback(mutableListOf())
-            }
-        })
-    }
-
-
-    fun performFinalRequest(
-        productRequest: ProductRequest,
-        onComplete: (products: MutableList<Product>) -> Unit
-    ) {
-        val callFinalRequest: Call<ProductResponse>? = apiBitrix?.getProducts(productRequest)
-        callFinalRequest?.enqueue(object : Callback<ProductResponse> {
-            override fun onResponse(
-                call: Call<ProductResponse>,
-                response: Response<ProductResponse>
-            ) {
-                val resultProducts: MutableList<Product> = mutableListOf()
-                if (response.isSuccessful) {
-                    val result: ProductResponse? = response.body()
-                    if (result != null) {
-                        val units: ArrayList<*>? = result.result["products"] as? ArrayList<*>
-                        if (units != null && units.isNotEmpty()) {
-                            for (unit: Any? in units) {
-                                val product: LinkedTreeMap<*, *>? = unit as? LinkedTreeMap<*, *>
-                                if (product != null) {
-                                    resultProducts.add(productMapper.mapToProduct(product))
-                                }
-                            }
-                        }
+                    } ?: emptyList<Product>().also {
+                        Log.w("ComingService", "Product list for selection is null in response body.")
                     }
                 } else {
-                    Log.e("performFinalRequest", "Error code: ${response.code()}")
+                    Log.e("ComingService", "getProductsForSelection failed: ${response.code()} - ${response.message()}")
+                    emptyList<Product>() 
                 }
-
-                onComplete(resultProducts)
+            } catch (e: Exception) {
+                Log.e("ComingService", "Error in getProductsForSelection", e)
+                emptyList<Product>() 
             }
-
-            override fun onFailure(call: Call<ProductResponse>, t: Throwable) {
-                Log.e("performFinalRequest", "Network error: ${t.message}", t)
-                onComplete(mutableListOf())
-            }
-        })
+        }
     }
 
+
+
+    // Получение продуктов документа с деталями (suspend версия)
+    // Получение продуктов документа с деталями (suspend версия)
+    suspend fun getDocumentProductsWithDetails(idDocument: Int): List<Product> { // Возвращает List<Product>
+        return withContext(Dispatchers.IO) {
+            // Map<elementId, Pair<idInDocument, amount>>
+            val documentElementsData = mutableMapOf<Int, Pair<Int, Int?>>() // amount может быть null
+
+            try {
+                // 1. Получаем элементы документа
+                Log.d("ComingService", "Getting doc elements for document $idDocument")
+                val requestElements = CatalogDocumentElementListRequest(filter = mutableMapOf("docId" to idDocument))
+                val elementsResponse = apiBitrix.getDocumentProducts(requestElements) // suspend call
+
+                if (elementsResponse.isSuccessful) {
+                    val rawElements = elementsResponse.body()?.result?.get("documentElements") as? List<*>
+                    rawElements?.forEach { element ->
+                        (element as? LinkedTreeMap<*, *>)?.let { elementMap ->
+                            try {
+                                val docElement = documentElementsMapper.mapToDocumentElement(elementMap)
+                                // Сохраняем ID элемента, ID записи в документе и КОЛИЧЕСТВО
+                                if (docElement.elementId != null && docElement.id != null) {
+                                    // ИСПРАВЛЕНО: Используем !! для id и elementId
+                                    documentElementsData[docElement.elementId!!] = Pair(docElement.id!!, docElement.amount) // Сохраняем пару
+                                    Log.d("ComingService", "Mapped doc element: id=${docElement.id}, elementId=${docElement.elementId}, amount=${docElement.amount}")
+                                } else {
+                                    Log.w("ComingService", "Skipping doc element due to null elementId or id: ${elementMap}")
+                                }
+                            } catch (mapE: Exception) {
+                                Log.e("ComingService", "Error mapping document element", mapE)
+                            }
+                        }
+                    }
+                    Log.d("ComingService", "Found ${documentElementsData.size} elements data in document $idDocument")
+                } else {
+                    Log.w("ComingService", "getDocumentProducts failed: ${elementsResponse.code()} - ${elementsResponse.message()}")
+                    return@withContext emptyList<Product>() // Критическая ошибка - выходим
+                }
+
+                // 2. Если элементы есть, получаем детали продуктов
+                val elementIds = documentElementsData.keys.toList()
+                if (elementIds.isEmpty()) {
+                    Log.d("ComingService", "No valid element IDs found in document $idDocument, returning empty list.")
+                    return@withContext emptyList<Product>()
+                }
+
+                Log.d("ComingService", "Getting product details for ${elementIds.size} elements")
+                val productRequest = ProductRequest(filter = mapOf("id" to elementIds, "iblockId" to listOf(14, 15))) // Уточнить iblockId
+                val productsResponse = apiBitrix.getProducts(productRequest) // suspend call
+                val resultProducts = mutableListOf<Product>()
+
+                if (productsResponse.isSuccessful) {
+                    val rawProducts = productsResponse.body()?.result?.get("products") as? List<*>
+                    rawProducts?.forEach { unit ->
+                        (unit as? LinkedTreeMap<*, *>)?.let { productMap ->
+                            try {
+                                val product = productMapper.mapToProduct(productMap)
+                                // Получаем сохраненные данные (ID в документе и количество)
+                                val elementData = documentElementsData[product.id]
+
+                                if (elementData != null) {
+                                    product.idInDocument = elementData.first // Присваиваем ID из документа
+                                    product.quantity = elementData.second // *** ПРИСВАИВАЕМ КОЛИЧЕСТВО ИЗ ДОКУМЕНТА ***
+                                    Log.d("ComingService", "Assigned idInDocument=${product.idInDocument} and quantity=${product.quantity} to product ${product.id}")
+                                } else {
+                                    Log.w("ComingService", "Could not find element data for product ${product.id} in documentElementsData map.")
+                                    product.idInDocument = null
+                                    product.quantity = 0 // Или null, в зависимости от вашей модели
+                                }
+                                resultProducts.add(product)
+                            } catch (mapE: Exception) {
+                                Log.e("ComingService", "Error mapping product or assigning doc data", mapE)
+                            }
+                        }
+                    }
+                    Log.d("ComingService", "Mapped ${resultProducts.size} products with details and doc data.")
+                } else {
+                    Log.w("ComingService", "getProducts failed: ${productsResponse.code()} - ${productsResponse.message()}")
+                    return@withContext emptyList<Product>() // Не смогли получить детали
+                }
+                resultProducts // Возвращаем список продуктов с idInDocument и quantity
+
+            } catch (e: Exception) {
+                Log.e("ComingService", "Error in getDocumentProductsWithDetails for doc $idDocument", e)
+                emptyList()
+            }
+        }
+    }
+
+    
+
+    
     private fun showAlertInfo(message: String, context: Context) {
-            AlertDialog.Builder(context).apply {
-                setTitle("Предупреждение")
-                setMessage(message)
-                setCancelable(false)
-                setPositiveButton("Закрыть") { dialog, _ ->
-                    dialog.cancel()
-                }
-            }.create().show()
+        AlertDialog.Builder(context).apply {
+            setTitle("Предупреждение")
+            setMessage(message)
+            setCancelable(false) 
+            setPositiveButton("Закрыть") { dialog, _ ->
+                dialog.cancel()
+            }
+        }.create().show()
     }
-
-
-
-
 }

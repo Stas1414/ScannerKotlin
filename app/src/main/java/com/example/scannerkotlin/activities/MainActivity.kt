@@ -5,41 +5,57 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.example.scannerkotlin.R
 import com.example.scannerkotlin.service.ScanService
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
-    private var scanButton: Button? = null
 
-    private var productsButton: Button? = null
+    private lateinit var scanButton: Button
+    private lateinit var productsButton: Button
+    private lateinit var documentButton: Button
 
-    private var documentButton: Button? = null
 
+    private var userId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+
+        userId = intent.getStringExtra("userId")
+        Log.d("MainActivity", "Received userId: $userId")
+
+
         startService(Intent(this, ScanService::class.java))
+
 
         scanButton = findViewById(R.id.scanButton)
         productsButton = findViewById(R.id.productsButton)
         documentButton = findViewById(R.id.documentButton)
 
-        scanButton?.setOnClickListener {
-            startScanActivity()
+
+        scanButton.setOnClickListener {
+            lifecycleScope.launch {
+                startScanActivity()
+            }
         }
 
-        productsButton?.setOnClickListener {
-            startDocumentMovingActivity()
+        productsButton.setOnClickListener {
+            lifecycleScope.launch {
+                startDocumentMovingActivity()
+            }
         }
 
-        documentButton?.setOnClickListener {
-            startDocumentComingActivity()
+        documentButton.setOnClickListener {
+            lifecycleScope.launch {
+                startDocumentComingActivity()
+            }
         }
-
     }
+
 
     private fun startScanActivity() {
         val intent = Intent(this, ScanActivity::class.java)
@@ -48,8 +64,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun startDocumentMovingActivity() {
         val intent = Intent(this, DocumentMovingActivity::class.java)
-        intent.putExtra("userId", getIntent().getStringExtra("userId"))
-        Log.d("MainActivity", "userId: ${getIntent().getStringExtra("userId")}")
+        intent.putExtra("userId", userId)
+        Log.d("MainActivity", "Starting DocumentMovingActivity with userId: $userId")
         startActivity(intent)
     }
 
