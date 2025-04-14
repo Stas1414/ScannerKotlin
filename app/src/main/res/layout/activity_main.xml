@@ -7,64 +7,92 @@
     android:layout_height="match_parent"
     tools:context=".activities.MainActivity">
 
+    <!-- Верхний View -->
     <View
         android:id="@+id/rectangle"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="100dp"
         android:background="@color/black"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- TextView -->
     <TextView
         android:id="@+id/textView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:gravity="center"
         android:text="@string/mainText"
         android:textColor="@color/white"
         android:textSize="20sp"
-        android:gravity="center"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/rectangle"
-        app:layout_constraintBottom_toBottomOf="@id/rectangle" />
+        app:layout_constraintBottom_toBottomOf="@id/rectangle"
+        app:layout_constraintEnd_toEndOf="@id/rectangle"
+        app:layout_constraintStart_toStartOf="@id/rectangle"
+        app:layout_constraintTop_toTopOf="@id/rectangle" />
 
-    <Button
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/scanButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="72dp"
-        android:backgroundTint="@color/blue"
-        android:text="@string/scanButton"
-        android:textSize="20sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/rectangle" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+    android:layout_marginStart="16dp"
+    android:layout_marginTop="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="8dp"
+    android:text="@string/scanButton"
+    android:textColor="@color/white"
+    android:textSize="20sp"
+    app:backgroundTint="@color/blue"
+    app:cornerRadius="8dp"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/rectangle"
+    app:layout_constraintBottom_toTopOf="@id/productsButton"
+    app:layout_constraintVertical_weight="1"
+    app:layout_constraintVertical_chainStyle="spread"
+    />
 
-    <Button
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/productsButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="120dp"
-        android:backgroundTint="@color/blue"
-        android:text="@string/documentBtn"
-        android:textSize="20sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.497"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/scanButton" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginBottom="8dp"
+    android:text="@string/documentBtn"
+    android:textColor="@color/white"
+    android:textSize="20sp"
+    app:backgroundTint="@color/blue"
+    app:cornerRadius="8dp"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/scanButton"
+    app:layout_constraintBottom_toTopOf="@id/documentButton"
+    app:layout_constraintVertical_weight="1"
+    />
 
-    <Button
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/documentButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="120dp"
-        android:backgroundTint="@color/blue"
-        android:text="@string/productsButton"
-        android:textSize="20sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/productsButton" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginBottom="16dp"
+    android:text="@string/productsButton"
+    android:textColor="@color/white"
+    android:textSize="20sp"
+    app:backgroundTint="@color/blue"
+    app:cornerRadius="8dp"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/productsButton"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintVertical_weight="1"
+    />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
