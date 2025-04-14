@@ -1,7 +1,7 @@
 package com.example.scannerkotlin.activities
 
 import android.annotation.SuppressLint
-import android.app.AlertDialog // Используем android.app для AlertDialog
+import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -13,7 +13,6 @@ import android.util.Log
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.ListView
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -28,10 +27,11 @@ import com.example.scannerkotlin.adapter.ProductComingAdapter
 import com.example.scannerkotlin.mappers.ProductMapper
 import com.example.scannerkotlin.model.Product
 import com.example.scannerkotlin.model.ProductOffer
-
 import com.example.scannerkotlin.service.CatalogDocumentComingService
-
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 @RequiresApi(Build.VERSION_CODES.O)

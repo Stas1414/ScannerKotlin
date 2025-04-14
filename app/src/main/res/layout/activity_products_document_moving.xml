@@ -1,41 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:padding="16dp">
 
-
-    <TextView
-        android:id="@+id/mainTitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:text="@string/documentMovingType"/>
-
-
     <LinearLayout
+        android:id="@+id/topSection"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="8dp">
+        android:orientation="vertical"
+        android:layout_alignParentTop="true">
 
         <TextView
-            android:id="@+id/tvArrivalNumber"
-            android:layout_width="wrap_content"
+            android:id="@+id/mainTitle"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="16sp"/>
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:text="@string/documentMovingType"/>
 
-        <TextView
-            android:id="@+id/tvArrivalDate"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:textSize="16sp"/>
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:id="@+id/tvArrivalNumber"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"/>
+
+            <TextView
+                android:id="@+id/tvArrivalDate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:textSize="16sp"/>
+        </LinearLayout>
     </LinearLayout>
 
     <TextView
@@ -45,31 +48,30 @@
         android:text="Список товаров пуст"
         android:textSize="18sp"
         android:visibility="gone"
-    app:layout_constraintBottom_toTopOf="@+id/buttonContainer"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent" />
-
+        android:layout_centerInParent="true"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvMovingProducts"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="16dp"/>
+        android:layout_height="match_parent"
+        android:layout_below="@id/topSection"
+        android:layout_above="@id/buttonContainer"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"/>
+
     <ProgressBar
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        android:layout_gravity="center" />
-
+        android:layout_centerInParent="true" />
 
     <LinearLayout
+        android:id="@+id/buttonContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="16dp">
+        android:layout_alignParentBottom="true">
 
         <Button
             android:id="@+id/btnMovingAdd"
@@ -81,6 +83,7 @@
             android:minHeight="48dp"
             android:text="@string/btnAddProduct"
             tools:ignore="ButtonStyle" />
+
         <Button
             android:id="@+id/btnMovingSave"
             android:layout_width="0dp"
@@ -93,4 +96,4 @@
             tools:ignore="ButtonStyle" />
     </LinearLayout>
 
-</LinearLayout>
+</RelativeLayout>
