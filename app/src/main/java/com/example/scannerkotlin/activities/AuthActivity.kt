@@ -8,6 +8,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.scannerkotlin.R
+
+import com.example.scannerkotlin.utils.SessionManager
 import com.example.scannerkotlin.service.UserService
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.CoroutineScope
@@ -19,14 +21,24 @@ import kotlinx.coroutines.withContext
 class AuthActivity : AppCompatActivity() {
 
     private var userService: UserService? = null
-    private val passwords: MutableList<String> = mutableListOf()
+
     private val users: MutableMap<String, String> = mutableMapOf()
     private val enteredPassword = StringBuilder()
     private lateinit var dotViews: List<ImageView>
+
     private val authScope = CoroutineScope(Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
+        if (SessionManager.isUserLoggedIn()) {
+            Log.i("AuthActivity", "User already logged in (userId: ${SessionManager.getUserId()}). Redirecting to MainActivity.")
+            startActivity(Intent(this, MainActivity::class.java))
+            finish()
+            return
+        }
+
         setContentView(R.layout.activity_auth)
 
         userService = UserService()
@@ -41,43 +53,48 @@ class AuthActivity : AppCompatActivity() {
         loadPasswords()
     }
 
+
     private fun loadPasswords() {
         authScope.launch {
             try {
+
                 val passwordPairs = withContext(Dispatchers.IO) {
                     userService?.getPasswords()
                 }
 
+
+                users.clear()
+
+
                 passwordPairs?.forEach { (id, password) ->
-                    Log.d("Entry", "Pass: $password, Id: $id")
-                    passwords.add(password)
+                    Log.d("AuthActivity", "Loading Pass: ***, Id: $id")
+
                     users[id] = password
                 }
+                Log.i("AuthActivity", "Passwords loaded successfully for ${users.size} users.")
             } catch (e: Exception) {
+
                 Log.e("AuthActivity", "Error loading passwords", e)
-                Toast.makeText(this@AuthActivity, "Ошибка загрузки паролей", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@AuthActivity, "Ошибка загрузки данных для входа. Попробуйте позже.", Toast.LENGTH_LONG).show()
+
             }
         }
     }
 
     private fun setupKeypadButtons() {
-        val buttons = listOf(
-            findViewById(R.id.btn1),
-            findViewById(R.id.btn2),
-            findViewById(R.id.btn3),
-            findViewById(R.id.btn4),
-            findViewById(R.id.btn5),
-            findViewById(R.id.btn6),
-            findViewById(R.id.btn7),
-            findViewById(R.id.btn8),
-            findViewById(R.id.btn9),
-            findViewById<MaterialButton>(R.id.btn0)
+
+        val buttonIds = listOf(
+            R.id.btn1, R.id.btn2, R.id.btn3,
+            R.id.btn4, R.id.btn5, R.id.btn6,
+            R.id.btn7, R.id.btn8, R.id.btn9,
+            R.id.btn0
         )
 
-        buttons.forEach { button ->
-            button.setOnClickListener {
+
+        buttonIds.forEach { buttonId ->
+            findViewById<MaterialButton>(buttonId).setOnClickListener { button ->
                 if (enteredPassword.length < 4) {
-                    enteredPassword.append(button.text)
+                    enteredPassword.append((button as MaterialButton).text)
                     updatePasswordDots()
 
                     if (enteredPassword.length == 4) {
@@ -88,6 +105,7 @@ class AuthActivity : AppCompatActivity() {
         }
 
         findViewById<MaterialButton>(R.id.btnDelete).setOnClickListener {
+
             if (enteredPassword.isNotEmpty()) {
                 enteredPassword.deleteCharAt(enteredPassword.length - 1)
                 updatePasswordDots()
@@ -95,36 +113,47 @@ class AuthActivity : AppCompatActivity() {
         }
     }
 
+
     private fun updatePasswordDots() {
         dotViews.forEachIndexed { index, imageView ->
-            if (index < enteredPassword.length) {
-                imageView.setImageResource(R.drawable.circle_filled)
-                imageView.imageTintList = ContextCompat.getColorStateList(this, R.color.black)
-            } else {
-                imageView.setImageResource(R.drawable.circle_outline)
-                imageView.imageTintList = ContextCompat.getColorStateList(this, R.color.black)
-            }
+            val isFilled = index < enteredPassword.length
+            val drawableRes = if (isFilled) R.drawable.circle_filled else R.drawable.circle_outline
+
+            val colorRes = R.color.black
+
+            imageView.setImageResource(drawableRes)
+            imageView.imageTintList = ContextCompat.getColorStateList(this, colorRes)
         }
     }
 
-    private fun checkPassword() {
-        val password = enteredPassword.toString()
 
-        if (passwords.contains(password)) {
-            val userId = users.entries.find { it.value == password }?.key
-            val intent = Intent(this, MainActivity::class.java).apply {
-                putExtra("userId", userId)
-            }
-            Log.d("AuthActivity", "userId: $userId")
+    private fun checkPassword() {
+        val enteredPass = enteredPassword.toString()
+
+
+        val userId = users.entries.find { it.value == enteredPass }?.key
+
+        if (userId != null) {
+
+            Log.i("AuthActivity", "Password correct for userId: $userId. Saving session.")
+
+
+            SessionManager.saveSession(userId)
+
+
+            val intent = Intent(this, MainActivity::class.java)
 
             startActivity(intent)
             finish()
         } else {
+
+            Log.w("AuthActivity", "Incorrect password entered.")
             Toast.makeText(this, "Неверный пароль", Toast.LENGTH_SHORT).show()
             enteredPassword.clear()
             updatePasswordDots()
         }
     }
+
 
     override fun onDestroy() {
         super.onDestroy()

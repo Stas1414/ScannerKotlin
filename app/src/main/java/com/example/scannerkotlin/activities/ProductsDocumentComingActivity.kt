@@ -20,48 +20,49 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope // Используем lifecycleScope
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.scannerkotlin.R
 import com.example.scannerkotlin.adapter.ProductComingAdapter
-import com.example.scannerkotlin.mappers.ProductMapper // Убедимся, что импортирован
+import com.example.scannerkotlin.mappers.ProductMapper
 import com.example.scannerkotlin.model.Product
 import com.example.scannerkotlin.model.ProductOffer
-//import com.example.scannerkotlin.request.ProductRequest // Не нужен напрямую
-import com.example.scannerkotlin.service.CatalogDocumentComingService
-//import com.google.gson.internal.LinkedTreeMap // Не нужен напрямую
-import kotlinx.coroutines.* // Импорт корутин
-import java.io.IOException // Для обработки ошибок
 
-@RequiresApi(Build.VERSION_CODES.O) // Оставляем, если сервис/мапперы требуют
+import com.example.scannerkotlin.service.CatalogDocumentComingService
+
+import kotlinx.coroutines.*
+
+
+@RequiresApi(Build.VERSION_CODES.O)
 class ProductsDocumentComingActivity : AppCompatActivity() {
 
-    // Используем lateinit
+
     private lateinit var btnSave: Button
     private lateinit var btnAddProduct: Button
     private lateinit var adapter: ProductComingAdapter
     private lateinit var progressBar: ProgressBar
     private lateinit var recyclerView: RecyclerView
     private lateinit var service: CatalogDocumentComingService
-    // private lateinit var apiBitrix: ApiBitrix // Не нужен напрямую
-    private lateinit var productMapper: ProductMapper // Нужен для handleAddProductClick
+    private lateinit var emptyProductListTextView: TextView
 
-    // Списки данных
+    private lateinit var productMapper: ProductMapper
+
+
     private val baseList = mutableListOf<Product>()
     private val productList = mutableListOf<Product>()
     private val productOffersList = mutableListOf<ProductOffer>()
     private val deletedProductsList = mutableListOf<Product>()
 
-    // BroadcastReceiver
+
     private var scanDataReceiver: BroadcastReceiver? = null
 
-    // ID документа
+
     private var idDocument: Int? = null
 
-    // --- Lifecycle Methods ---
 
-    @SuppressLint("UnspecifiedRegisterReceiverFlag", "NewApi") // Оставляем @NewApi, если нужно
+
+    @SuppressLint("UnspecifiedRegisterReceiverFlag", "NewApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_document_products)
@@ -77,17 +78,16 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         initializeDependencies()
         initializeViews()
         setupRecyclerView()
-        setupUI() // Настройка заголовка и т.д.
+        setupUI()
         setupButtonClickListeners()
-        setupBroadcastReceiver() // Настройка ресивера сканера
+        setupBroadcastReceiver()
 
-        loadProducts() // Загрузка начальных данных
-        updateSaveButtonState() // Начальное состояние кнопки
+        loadProducts()
+        updateSaveButtonState()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        // Отменяем регистрацию ресивера
         scanDataReceiver?.let {
             try {
                 unregisterReceiver(it)
@@ -99,12 +99,12 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         scanDataReceiver = null
     }
 
-    // --- Initialization ---
+
 
     private fun initializeDependencies() {
-        service = CatalogDocumentComingService() // Инициализируем сервис
-        productMapper = ProductMapper() // Инициализируем маппер
-        // apiBitrix инициализация не нужна
+        service = CatalogDocumentComingService()
+        productMapper = ProductMapper()
+
     }
 
     private fun initializeViews() {
@@ -112,15 +112,16 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         btnAddProduct = findViewById(R.id.btnAddProduct)
         progressBar = findViewById(R.id.progressBar)
         recyclerView = findViewById(R.id.rvProducts)
+        emptyProductListTextView = findViewById(R.id.emptyProductListTextView)
     }
 
-    @SuppressLint("NotifyDataSetChanged") // Используется при инициализации и удалении
+    @SuppressLint("NotifyDataSetChanged")
     private fun setupRecyclerView() {
         recyclerView.layoutManager = LinearLayoutManager(this)
-        adapter = ProductComingAdapter(productList) { position -> // onDelete callback
+        adapter = ProductComingAdapter(productList) { position ->
             handleItemDeletion(position)
         }
-        // Устанавливаем слушатель изменений в адаптере для обновления кнопки
+
         adapter.setOnDataChangedListener {
             updateSaveButtonState()
         }
@@ -128,9 +129,9 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
     }
 
     private fun setupUI() {
-        val title = intent.getStringExtra("title") ?: "Приход товара" // Дефолтный заголовок
+        val title = intent.getStringExtra("title") ?: "Приход товара"
         findViewById<TextView>(R.id.mainTitle).text = title
-        supportActionBar?.title = title // Опционально: установить заголовок ActionBar
+        supportActionBar?.title = title
         Log.d("ProductsComingActivity", "UI setup: Title='$title', ID='$idDocument'")
     }
 
@@ -139,7 +140,7 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         btnAddProduct.setOnClickListener { handleAddProductClick() }
     }
 
-    @SuppressLint("UnspecifiedRegisterReceiverFlag") // Для registerReceiver
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun setupBroadcastReceiver() {
         scanDataReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -152,7 +153,7 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
                 }
             }
         }
-        // Регистрация ресивера с учетом версии Android
+
         val filter = IntentFilter("Scan_data_received")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(scanDataReceiver, filter, RECEIVER_NOT_EXPORTED)
@@ -162,12 +163,13 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         Log.d("ProductsComingActivity", "Scan data receiver registered")
     }
 
-    // --- Data Loading & Actions ---
 
-    @SuppressLint("NotifyDataSetChanged") // Используется для первоначальной загрузки
+
+    @SuppressLint("NotifyDataSetChanged")
     private fun loadProducts() {
         val currentIdDocument = idDocument ?: return
         progressBar.visibility = View.VISIBLE
+        emptyProductListTextView.visibility = View.GONE
         Log.d("ProductsComingActivity", "Starting product load for document $currentIdDocument")
 
         lifecycleScope.launch {
@@ -191,12 +193,14 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
                             baseList.addAll(loadedProducts)
                             adapter.notifyDataSetChanged()
                             updateSaveButtonState()
+                            updateEmptyStateVisibility()
                         } else {
                             Toast.makeText(this@ProductsDocumentComingActivity, "Ошибка загрузки продуктов: ${error.message}", Toast.LENGTH_LONG).show()
                             productList.clear()
                             baseList.clear()
                             adapter.notifyDataSetChanged()
                             updateSaveButtonState()
+                            updateEmptyStateVisibility()
                         }
                     }
                 }
@@ -204,7 +208,7 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         }
     }
 
-    // Обработка нажатия кнопки "Добавить товар"
+
     private fun handleAddProductClick() {
         Log.d("ProductsComingActivity", "Add product button clicked")
         progressBar.visibility = View.VISIBLE
@@ -213,8 +217,7 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         lifecycleScope.launch {
             var productsForSelection: List<Product> = emptyList()
             var error: Throwable? = null
-            val iblockId = 14 // Уточните ваш ID инфоблока
-
+            val iblockId = 14
             try {
                 productsForSelection = service.getProductsForSelection(iblockId) // Используем сервис
                 Log.d("ProductsComingActivity", "Loaded ${productsForSelection.size} products for selection via service")
@@ -243,7 +246,7 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         }
     }
 
-    // Обработка выбора продукта из диалога
+
     @SuppressLint("NotifyDataSetChanged")
     private fun handleProductSelection(selectedProduct: Product?) {
         if (selectedProduct != null) {
@@ -256,6 +259,7 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
                 Log.d("ProductsComingActivity", "Product ${selectedProduct.name} added to productOfferList (${productOffersList.size})")
                 adapter.notifyItemInserted(0)
                 recyclerView.scrollToPosition(0)
+                updateEmptyStateVisibility()
                 updateSaveButtonState()
             } else {
                 Toast.makeText(this, "Товар '${selectedProduct.name}' уже есть в списке", Toast.LENGTH_SHORT).show()
@@ -265,12 +269,12 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         }
     }
 
-    // Создание ProductOffer (простая функция, не suspend)
+
     private fun createProductOffer(product: Product): ProductOffer {
         return ProductOffer(product)
     }
 
-    // Обработка удаления элемента из списка
+
     @SuppressLint("NotifyDataSetChanged")
     private fun handleItemDeletion(position: Int) {
         if (position < 0 || position >= productList.size) return
@@ -286,9 +290,10 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         }
         adapter.notifyDataSetChanged()
         updateSaveButtonState()
+        updateEmptyStateVisibility()
     }
 
-    // Обработка нажатия кнопки "Сохранить"
+
     private fun handleSaveButtonClick() {
         val currentIdDocument = idDocument ?: return
         if (!areAllFieldsFilled()) {
@@ -327,34 +332,32 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e("ProductsComingActivity", "Error calling conductDocumentSuspend", e)
                 error = e
-                success = false // Явно указываем на неудачу при исключении
+                success = false
             } finally {
-                // Этот блок выполнится всегда
+
                 withContext(Dispatchers.Main) {
-                    // Всегда скрываем прогресс бар после завершения операции
+
                     progressBar.visibility = View.GONE
 
-                    if (isActive) { // Проверяем, не была ли корутина отменена
+                    if (isActive) {
                         if (success) {
-                            // --- УСПЕХ ---
+
                             Log.d("ProductsComingActivity", "Conduct successful, navigating to MainActivity.")
                             Toast.makeText(this@ProductsDocumentComingActivity, "Документ успешно проведен", Toast.LENGTH_SHORT).show()
-                            // Выполняем навигацию ЗДЕСЬ, в Activity
+
                             val intent = Intent(this@ProductsDocumentComingActivity, MainActivity::class.java)
                             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                             startActivity(intent)
-                            finish() // Закрываем текущую Activity после перехода
+                            finish()
 
                         } else {
-                            // --- НЕУДАЧА ---
-                            // Разблокируем кнопку только в случае неудачи
+
                             btnSave.isEnabled = true
                             if (error != null) {
-                                // Было исключение
+
                                 Toast.makeText(this@ProductsDocumentComingActivity, "Ошибка проведения: ${error.message}", Toast.LENGTH_LONG).show()
                             } else {
-                                // Сервис вернул false, но исключения не было
-                                // Сообщение об ошибке должно было показаться из сервиса (через showAlertInfo)
+
                                 Log.w("ProductsComingActivity", "Conduct document reported failure, but no exception was caught here.")
                             }
                         }
@@ -366,7 +369,7 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         }
     }
 
-    // Обработка результата сканирования штрихкода
+
     private fun handleBarcodeScanResult(barcode: String) {
         Log.d("ProductsComingActivity", "Handling barcode scan result: $barcode")
         val success = adapter.updateFocusedProductBarcode(barcode)
@@ -380,7 +383,7 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
         }
     }
 
-    // --- UI Helpers ---
+
 
     private fun showAlert(
         title: String,
@@ -439,5 +442,16 @@ class ProductsDocumentComingActivity : AppCompatActivity() {
                 if (canSave) R.color.blue else R.color.gray
             )
         )
+    }
+
+    private fun updateEmptyStateVisibility() {
+        if (productList.isEmpty()) {
+            emptyProductListTextView.text = "Список товаров пуст"
+            emptyProductListTextView.visibility = View.VISIBLE
+            recyclerView.visibility = View.GONE
+        } else {
+            emptyProductListTextView.visibility = View.GONE
+            recyclerView.visibility = View.VISIBLE
+        }
     }
 }

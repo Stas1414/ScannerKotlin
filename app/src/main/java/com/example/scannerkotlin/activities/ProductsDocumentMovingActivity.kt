@@ -13,6 +13,7 @@ import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
@@ -43,7 +44,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.IOException
 
-@RequiresApi(Build.VERSION_CODES.O) 
+@RequiresApi(Build.VERSION_CODES.O)
 class ProductsDocumentMovingActivity : AppCompatActivity() {
 
     
@@ -53,7 +54,8 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var adapter: ProductMovingAdapter
     private lateinit var service: CatalogDocumentMovingService
-    private lateinit var apiBitrix: ApiBitrix 
+    private lateinit var apiBitrix: ApiBitrix
+    private lateinit var emptyProductMovingTextView: TextView
 
     
     private val elements: MutableList<DocumentElement> = mutableListOf()
@@ -135,6 +137,7 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
         btnSave = findViewById(R.id.btnMovingSave)
         recyclerView = findViewById(R.id.rvMovingProducts)
         progressBar = findViewById(R.id.progressBar)
+        emptyProductMovingTextView = findViewById(R.id.emptyProductMovingTextView)
     }
 
     private fun setupRecyclerView() {
@@ -187,6 +190,7 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
     private fun loadInitialData() {
         val currentIdDocument = idDocument ?: return 
         progressBar.visibility = View.VISIBLE
+        emptyProductMovingTextView.visibility = View.GONE
         Log.d("ProductsActivity", "Starting loadInitialData for document $currentIdDocument")
 
         lifecycleScope.launch {
@@ -222,7 +226,8 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                             
                             adapter.updateStores(storeList) 
                             adapter.updateData(ArrayList(elements)) 
-                            
+
+                            updateEmptyStateVisibility()
                             updateSaveButtonState() 
                         } else {
                             Toast.makeText(this@ProductsDocumentMovingActivity, "Ошибка загрузки данных: ${error.message}", Toast.LENGTH_LONG).show()
@@ -230,6 +235,7 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                             elements.clear()
                             baseList.clear()
                             adapter.updateData(ArrayList(elements))
+                            updateEmptyStateVisibility()
                             updateSaveButtonState()
                         }
                     }
@@ -251,7 +257,8 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
         newProductInDocument.remove(removedItem)
 
         adapter.notifyItemRemoved(position)
-        
+
+        updateEmptyStateVisibility()
         updateSaveButtonState()
         Log.d("ProductsActivity", "Item deleted: ${removedItem.name}. Deleted list size: ${deletedProduct.size}")
 
@@ -307,6 +314,7 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                 adapter.notifyItemInserted(0)
                 recyclerView.scrollToPosition(0) 
                 updateSaveButtonState()
+                updateEmptyStateVisibility()
                 Log.d("ProductsActivity", "Added new element: ${newElement.name}. New list size: ${newProductInDocument.size}")
             } else {
                 Toast.makeText(this, "Товар '${selectedProduct.name}' уже есть в списке", Toast.LENGTH_SHORT).show()
@@ -327,6 +335,7 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
             
             adapter.notifyDataSetChanged()
             recyclerView.scrollToPosition(0)
+            updateEmptyStateVisibility()
             updateSaveButtonState()
             Log.d("ProductsActivity", "Added scanned element: ${element.name}. New list size: ${newProductInDocument.size}")
         } else {
@@ -409,8 +418,7 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
         lifecycleScope.launch {
             var fetchedProduct: Product? = null
             var fetchedStoreAmounts: List<StoreAmountResponse.StoreProduct>? = null
-            var failureMessage: String? = null 
-            var exceptionOccurred: Throwable? = null 
+            var failureMessage: String? = null
 
             try {
                 
@@ -468,7 +476,7 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                     if (productIdInt != null) {
                         Log.d("ProductsActivity", "Getting store amounts for product ID $productIdInt")
                         fetchedStoreAmounts = service.getStoreForScan(productIdInt)
-                        Log.d("ProductsActivity", "Fetched ${fetchedStoreAmounts?.size ?: 0} store amount records.")
+                        Log.d("ProductsActivity", "Fetched ${fetchedStoreAmounts.size} store amount records.")
                     } else {
                         Log.w("ProductsActivity", "Invalid product ID format for store scan: $productId")
                     }
@@ -477,11 +485,9 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                 
             } catch (ioe: IOException) {
                 Log.e("ProductsActivity", "Network error processing barcode $barcode", ioe)
-                exceptionOccurred = ioe
                 failureMessage = "Ошибка сети при обработке штрихкода."
             } catch (e: Exception) {
                 Log.e("ProductsActivity", "Error processing barcode $barcode", e)
-                exceptionOccurred = e
                 failureMessage = "Непредвиденная ошибка при обработке штрихкода."
             }
 
@@ -496,7 +502,7 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
 
                 if (fetchedProduct != null) {
                     
-                    val element = mapper.map(fetchedProduct, currentIdDocument!!) 
+                    val element = mapper.map(fetchedProduct, currentIdDocument)
 
                     if (elements.none { it.elementId == element.elementId }) {
                         Log.d("ProductsActivity", "Product not in list. Showing confirmation dialog for ${element.name}")
@@ -628,5 +634,15 @@ class ProductsDocumentMovingActivity : AppCompatActivity() {
                 if (canSave) R.color.blue else R.color.gray
             )
         )
+    }
+    private fun updateEmptyStateVisibility() {
+        if (elements.isEmpty()) {
+            emptyProductMovingTextView.text = "Список товаров пуст"
+            emptyProductMovingTextView.visibility = View.VISIBLE
+            recyclerView.visibility = View.GONE
+        } else {
+            emptyProductMovingTextView.visibility = View.GONE
+            recyclerView.visibility = View.VISIBLE
+        }
     }
 }

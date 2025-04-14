@@ -2,9 +2,9 @@
     <string name="app_name">ScannerKotlin</string>
     <string name="ScanText">Отсканированные товары</string>
     <string name="mainText">Главное меню</string>
-    <string name="scanButton">Инвентаризация</string>
-    <string name="productsButton">Приход</string>
-    <string name="documentBtn">Перемещение</string>
+    <string name="scanButton">ИНВЕНТАРИЗАЦИЯ</string>
+    <string name="productsButton">ПРИХОД</string>
+    <string name="documentBtn">ПЕРЕМЕЩЕНИЕ</string>
     <string name="productsText">Товары</string>
     <string name="dataText">Data</string>
     <string name="symbologyText">symbology</string>
@@ -37,4 +37,5 @@
     <string name="barcode">Штрихкод</string>
     <string name="AddDocumentMoving">Добавить документ</string>
     <string name="Auth">Авторизация</string>
+    <string name="logoutButton">ВЫЙТИ</string>
 </resources>
